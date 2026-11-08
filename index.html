@@ -529,7 +529,7 @@ const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e)
    "cabelo", "cabelo-evo-<id>", "perfil"). Na conta: data/users/<id>/<doc> (privado).
    Espelhado no navegador: abre na hora e funciona sem conexão. */
 const CACHE = 'meu-ritual:v1';
-const APP_VERSAO = '11'; // o montar_site.py troca pelo número da versão do site
+const APP_VERSAO = '12'; // o montar_site.py troca pelo número da versão do site
 /* IndexedDB: guarda tudo no aparelho com bem mais espaço que o localStorage (fotos incluídas) */
 const IDB = {
   db: null,
@@ -943,7 +943,8 @@ const App = {
   },
   render() {
     aplicarTema();
-    if (Store.ready) { this.semear(); this.hooks.migrar.forEach(f => f()); }
+    // rotinas prontas só entram sozinhas com ?minha-rotina no link; quem recebe o link compartilhado começa limpo
+    if (Store.ready) { if (/minha-rotina/.test(location.search)) this.semear(); this.hooks.migrar.forEach(f => f()); }
     const r = this.route(), def = this.routes[r], m = def.mod, area = m.nav && m.nav.area;
     document.body.className = document.body.className.replace(/\bmod-\S+/g, '').trim() + ' mod-' + m.id;
     const main = $('#main');
@@ -981,13 +982,20 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
   if (!el || el.disabled) return;
   const fn = App.actions[el.dataset.act];
-  if (fn) { e.preventDefault(); fn(el.dataset, el, e); }
+  if (!fn) return;
+  e.preventDefault();
+  // garante que o que está escrito nos campos da folha entra no estado antes de salvar (vale para qualquer navegador)
+  if (Sheet.st && el.closest('#sheet')) document.querySelectorAll('#sheetBody [data-bind]').forEach(i => { Sheet.st[i.dataset.bind] = i.type === 'checkbox' ? i.checked : i.value; });
+  fn(el.dataset, el, e);
 });
 document.addEventListener('input', e => {
   const el = e.target;
   if (el.dataset && el.dataset.bind && Sheet.st) Sheet.st[el.dataset.bind] = el.type === 'checkbox' ? el.checked : el.value;
 });
 document.addEventListener('change', e => {
+  // iPhone: campos de data, hora e lista só disparam "change" (não "input") — sem isso a data nova não era salva
+  const b = e.target;
+  if (b.dataset && b.dataset.bind && Sheet.st) Sheet.st[b.dataset.bind] = b.type === 'checkbox' ? b.checked : b.value;
   const el = e.target.closest('[data-chg]');
   if (el) { const fn = App.actions[el.dataset.chg]; fn && fn(el.dataset, el, e); }
 });
@@ -1559,8 +1567,8 @@ function semanaTipos(H, ini, fim) {
 }
 function emptyState() {
   return `<div class="card empty">${ic('dumbbell')}<h2>Monte seus treinos</h2>
-    <p class="muted sm">Carregue sua rotina de 4 dias (Seg glúteos, Qua superiores, Sex pernas, Sáb cardio, com abdômen em todos) e ajuste do seu jeito, ou crie do zero com a biblioteca.</p>
-    <div class="row-btns" style="width:100%"><button class="btn ghost" data-act="tZero">Do zero</button><button class="btn primary" data-act="tModelo">Usar minha rotina</button></div></div>`;
+    <p class="muted sm">Comece com uma rotina pronta de 4 dias (Seg glúteos, Qua superiores, Sex pernas, Sáb cardio, com abdômen em todos) e ajuste do seu jeito, ou crie do zero com a biblioteca.</p>
+    <div class="row-btns" style="width:100%"><button class="btn ghost" data-act="tZero">Do zero</button><button class="btn primary" data-act="tModelo">Usar rotina pronta</button></div></div>`;
 }
 
 /* ----- tela inicial ----- */
@@ -2206,8 +2214,8 @@ function aplicarRotinaPele(s) {
 App.hooks.semear.push(() => { if (!Store.get('skincare')) Store.put('skincare', aplicarRotinaPele({v: 1, rotinas: {}, checks: {}})); });
 function emptyState() {
   return `<div class="card empty">${ic('drop')}<h2>Sua rotina de pele</h2>
-    <p class="muted sm">Carregue sua rotina: manhã com sabonete, olhos, creme facial e FPS 50; à noite retinol (seg, qua, sex), hidratação (ter, sáb), PowerPad (qui) e argila rosa (dom).</p>
-    <div class="row-btns" style="width:100%"><button class="btn ghost" data-act="kZero">Do zero</button><button class="btn primary" data-act="kModelo">Usar minha rotina</button></div></div>`;
+    <p class="muted sm">Comece com uma rotina pronta: manhã com sabonete, olhos, creme facial e FPS 50; à noite retinol (seg, qua, sex), hidratação (ter, sáb), pads (qui) e argila (dom). Depois é só trocar pelos seus produtos.</p>
+    <div class="row-btns" style="width:100%"><button class="btn ghost" data-act="kZero">Do zero</button><button class="btn primary" data-act="kModelo">Usar rotina pronta</button></div></div>`;
 }
 function stepBtn(s, x, k, per, done, futuro, idx) {
   const p = Produtos.get(x.prodId), obs = x.obs || p.obs || p.finalidade;
@@ -2649,6 +2657,8 @@ function status(c) {
   return ['', `Vence ${fmtData(fromKey(c.venc))}`];
 }
 const abertas = s => s.contas.filter(c => !c.pago).sort((a, b) => a.venc.localeCompare(b.venc));
+const variavel = c => c.tipoValor === 'variavel';
+const valorTxt = c => c.valor ? fmtBRL(c.valor) : '<span class="chip-st soon">a preencher</span>';
 
 function home() {
   const s = F.st(), ab = abertas(s);
@@ -2656,7 +2666,7 @@ function home() {
   if (!ab.length) return `<button class="item" data-act="go" data-r="contas">${ic('wallet')}<span class="grow"><p class="eyebrow" style="margin:0">Contas</p><h3>Tudo pago por enquanto</h3></span>${ic('next')}</button>`;
   const c = ab[0], [cls, txt] = status(c), atrasadas = ab.filter(x => diasAte(x.venc) < 0).length;
   return `<button class="item" data-act="go" data-r="contas" style="align-items:flex-start">${ic('wallet')}<span class="grow"><p class="eyebrow" style="margin:0">Próxima conta</p>
-    <div class="between"><h3>${esc(c.nome)}</h3><span class="money">${fmtBRL(c.valor)}</span></div>
+    <div class="between"><h3>${esc(c.nome)}</h3><span class="money">${valorTxt(c)}</span></div>
     <p class="row" style="gap:8px;margin-top:4px;flex-wrap:wrap"><span class="chip-st ${cls}">${txt}</span><span class="sm muted">${fmtData(fromKey(c.venc))}</span>${atrasadas > (diasAte(c.venc) < 0 ? 1 : 0) ? `<span class="chip-st late">${plural(atrasadas, 'vencida')}</span>` : ''}</p></span></button>`;
 }
 
@@ -2675,14 +2685,16 @@ function viewContas() {
     ${doMes.length ? `<section class="card" style="padding-block:6px"><div class="steps">${doMes.map(c => { const [cls, txt] = status(c);
       return `<div class="step" style="grid-template-columns:auto 1fr auto;cursor:default"><button class="box" role="checkbox" aria-checked="${c.pago}" aria-label="Marcar ${esc(c.nome)} como paga" data-act="cPagar" data-id="${c.id}">${ic('check')}</button>
         <button style="all:unset;cursor:pointer;min-width:0" data-act="cEditar" data-id="${c.id}"><p class="nome" style="${c.pago ? 'color:var(--muted)' : ''}">${esc(c.nome)}</p>
-        <p class="row" style="gap:6px;margin-top:3px;flex-wrap:wrap"><span class="chip-st ${cls}">${txt}</span><span class="tag">${CAT[c.cat] || 'Outros'}${c.recorrente ? ' · todo mês' : ''}</span></p></button>
-        <span class="money" style="${c.pago ? 'color:var(--muted)' : ''}">${fmtBRL(c.valor)}</span></div>`; }).join('')}</div></section>`
+        <p class="row" style="gap:6px;margin-top:3px;flex-wrap:wrap"><span class="chip-st ${cls}">${txt}</span><span class="tag">${CAT[c.cat] || 'Outros'}${c.recorrente ? (variavel(c) ? ' · todo mês, valor variável' : ' · todo mês') : ''}</span></p></button>
+        <span class="money" style="${c.pago ? 'color:var(--muted)' : ''}">${valorTxt(c)}</span></div>`; }).join('')}</div></section>`
       : `<div class="card empty">${ic('wallet')}<h2>Nenhuma conta em ${ref.toLocaleDateString('pt-BR', {month: 'long'})}</h2><p class="muted sm">Cadastre aluguel, cartão, luz, internet… Contas que se repetem todo mês aparecem sozinhas no mês seguinte quando você marcar como paga.</p></div>`}
     </div>`;
 }
 function form(st) {
   return `<label class="f">Nome da conta<input class="t" id="cf-nome" data-bind="nome" value="${esc(st.nome)}" placeholder="Ex.: Cartão Nubank, Luz, Aluguel" maxlength="50"></label>
-    <div class="grid2"><label class="f">Valor<input class="t" id="cf-valor" data-bind="valor" inputmode="decimal" value="${esc(st.valor)}" placeholder="R$ 0,00"></label>
+    <div class="f"><span>Tipo de valor</span><div class="seg"><button aria-pressed="${!variavel(st)}" data-act="cfTipo" data-t="fixo">Fixo</button><button aria-pressed="${variavel(st)}" data-act="cfTipo" data-t="variavel">Variável</button></div>
+      <p class="muted sm" style="font-weight:400">${variavel(st) ? 'Muda todo mês (ex.: cartão, luz). Os próximos meses chegam com o valor em branco para você preencher.' : 'Mesmo valor todo mês (ex.: aluguel, internet).'}</p></div>
+    <div class="grid2"><label class="f">${variavel(st) ? 'Valor deste mês' : 'Valor'}<input class="t" id="cf-valor" data-bind="valor" inputmode="decimal" value="${esc(st.valor)}" placeholder="${variavel(st) ? 'em branco = a preencher' : 'R$ 0,00'}"></label>
       <label class="f">Vencimento<input class="t" id="cf-venc" type="date" data-bind="venc" value="${esc(st.venc)}"></label></div>
     <div class="f"><span>Categoria</span><div class="chips wrap">${Object.entries(CAT).map(([k, l]) => `<button class="chip" aria-pressed="${st.cat === k}" data-act="cfCat" data-c="${k}">${l}</button>`).join('')}</div></div>
     <button class="pick" role="checkbox" aria-checked="${st.recorrente}" data-act="cfRec"><span class="box sq">${ic('check')}</span>Repete todo mês</button>
@@ -2706,17 +2718,20 @@ function lerContas(txt) {
     if ((m = resto.match(/(\d{4})-(\d{2})-(\d{2})/))) { venc = `${m[1]}-${m[2]}-${m[3]}`; resto = resto.replace(m[0], ' '); }
     if (!venc && (m = resto.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/))) { let y = m[3] ? +m[3] : hoje.getFullYear(); if (y < 100) y += 2000; venc = dkey(new Date(y, +m[2] - 1, +m[1])); resto = resto.replace(m[0], ' '); }
     if (!venc && (m = resto.match(/\bdia\s*(\d{1,2})\b/i))) { const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate(); venc = dkey(new Date(hoje.getFullYear(), hoje.getMonth(), Math.min(+m[1], fim))); resto = resto.replace(m[0], ' '); }
+    const ehVar = /(^|[\s;,])vari[aá]vel(?=$|[\s;,])/i.test(resto);
     const nums = [...resto.matchAll(/(R\$\s*)?(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+,\d{1,2}|\d+\.\d{1,2}|\d+)/g)];
-    if (!nums.length) return;
-    const pick = nums.find(n => n[1] || /,/.test(n[2])) || nums[nums.length - 1];
-    const valor = parseValor(pick[2].includes(',') || /\.\d{3}/.test(pick[2]) ? pick[2] : pick[2].replace('.', ','));
-    if (!valor) return;
-    resto = resto.replace(pick[0], ' ');
+    let valor = null;
+    if (nums.length) {
+      const pick = nums.find(n => n[1] || /,/.test(n[2])) || nums[nums.length - 1];
+      valor = parseValor(pick[2].includes(',') || /\.\d{3}/.test(pick[2]) ? pick[2] : pick[2].replace('.', ','));
+      if (valor) resto = resto.replace(pick[0], ' ');
+    }
+    if (!valor && !ehVar) return;
     const unica = /(^|[\s;,])(única|unica|avulsa|parcela)(?=$|[\s;,])/i.test(resto), paga = /(^|[\s;,])(paga|pago)(?=$|[\s;,])/i.test(resto);
-    const nome = resto.replace(/(^|[\s;,])(mensal|todo m[eê]s|única|unica|avulsa|paga|pago|vencimento|venc\.?|valor|r\$)(?=$|[\s;,])/gi, ' ').replace(/[;,\t|]+/g, ' ').replace(/\s+/g, ' ').replace(/^[\s\-–:]+|[\s\-–:]+$/g, '').trim();
+    const nome = resto.replace(/(^|[\s;,])(mensal|todo m[eê]s|única|unica|avulsa|paga|pago|vari[aá]vel|fixo|vencimento|venc\.?|valor|r\$)(?=$|[\s;,])/gi, ' ').replace(/[;,\t|]+/g, ' ').replace(/\s+/g, ' ').replace(/^[\s\-–:]+|[\s\-–:]+$/g, '').trim();
     if (!nome) return;
     const cat = (CAT_PALAVRAS.find(([re]) => re.test(nome)) || [0, 'outros'])[1];
-    out.push({nome: nome.charAt(0).toUpperCase() + nome.slice(1), valor, venc: venc || dkey(hoje), semData: !venc, recorrente: !unica, pago: paga, cat, obs, sel: true});
+    out.push({nome: nome.charAt(0).toUpperCase() + nome.slice(1), valor, venc: venc || dkey(hoje), semData: !venc, recorrente: !unica, pago: paga && !!valor, tipoValor: ehVar ? 'variavel' : 'fixo', cat, obs, sel: true});
   });
   return out;
 }
@@ -2728,7 +2743,7 @@ function importForm(st) {
       <div class="steps">${st.itens.map((x, i) => `<div class="step" style="grid-template-columns:auto 1fr auto;cursor:default">
         <button class="box" role="checkbox" aria-checked="${x.sel && !ja(x)}" data-act="ciSel" data-i="${i}" ${ja(x) ? 'disabled' : ''}>${ic('check')}</button>
         <span style="min-width:0"><p class="nome">${esc(x.nome)}</p><p class="tag">${ja(x) ? 'já cadastrada' : `${x.pago ? 'paga · ' : ''}${x.semData ? 'sem data · ' : ''}vence ${fmtData(fromKey(x.venc))} · ${CAT[x.cat]}${x.recorrente ? ' · todo mês' : ''}`}</p></span>
-        <span class="money">${fmtBRL(x.valor)}</span></div>`).join('')}</div>
+        <span class="money">${x.valor ? fmtBRL(x.valor) : 'a preencher'}</span></div>`).join('')}</div>
       ${st.itens.some(x => x.semData) ? `<p class="note warn">Linhas sem data ficaram com vencimento hoje. Ajuste depois tocando na conta.</p>` : ''}
       <div class="row-btns"><button class="btn ghost" data-act="ciVoltar">Voltar</button><button class="btn primary" data-act="ciOk" ${n ? '' : 'disabled'}>Importar ${plural(n, 'conta')}</button></div>`;
   }
@@ -2736,13 +2751,14 @@ function importForm(st) {
     <p class="note sm" style="white-space:pre-line">Aluguel; 1.500,00; dia 5
 Luz; 189,90; 12/11
 Cartão Nubank; 1.250,00; dia 10
-Netflix; 39,90; dia 18</p>
+Netflix; 39,90; dia 18
+Cartão; variável; dia 6</p>
     <button class="btn ghost" data-act="ciArquivo">${ic('book')} Escolher arquivo</button>
     <textarea class="t" id="ci-txt" data-bind="txt" rows="6" placeholder="Cole aqui suas contas">${esc(st.txt || '')}</textarea>
     ${st.err ? `<p class="note warn">${esc(st.err)}</p>` : ''}
     <button class="btn primary" data-act="ciLer">Ver contas encontradas</button>`;
 }
-App.hooks.avisos.push(() => abertas(F.st()).map(c => { const d = fromKey(c.venc); d.setHours(9, 0, 0, 0); return {id: 'conta-' + c.id, titulo: `Vence hoje: ${c.nome}`, corpo: fmtBRL(c.valor), quando: d}; }));
+App.hooks.avisos.push(() => abertas(F.st()).map(c => { const d = fromKey(c.venc); d.setHours(9, 0, 0, 0); return {id: 'conta-' + c.id, titulo: `Vence hoje: ${c.nome}`, corpo: c.valor ? fmtBRL(c.valor) : 'valor a preencher', quando: d}; }));
 
 App.module({
   id: 'financas', nav: {route: 'contas', label: 'Contas', icon: 'wallet'},
@@ -2764,36 +2780,40 @@ App.module({
     ciOk: () => {
       const st = Sheet.st, s = F.st(), ja = x => s.contas.some(c => c.nome.toLowerCase() === x.nome.toLowerCase() && c.venc === x.venc);
       const series = {}, serieDe = n => series[n.toLowerCase()] || (series[n.toLowerCase()] = (s.contas.find(c => c.nome.toLowerCase() === n.toLowerCase()) || {}).serie || uid());
-      const novas = st.itens.filter(x => x.sel && !ja(x)).map(x => ({id: uid(), serie: serieDe(x.nome), nome: x.nome, valor: x.valor, venc: x.venc, cat: x.cat, recorrente: x.recorrente,
+      const novas = st.itens.filter(x => x.sel && !ja(x)).map(x => ({id: uid(), serie: serieDe(x.nome), nome: x.nome, valor: x.valor, tipoValor: x.tipoValor, venc: x.venc, cat: x.cat, recorrente: x.recorrente,
         pago: !!x.pago, pagoEm: x.pago ? fromKey(x.venc).getTime() : null, obs: x.obs || ''}));
       s.contas.push(...novas);
       // conta que repete e já está paga: garante a do mês seguinte (se ainda não houver nenhuma com esse nome naquele mês)
       novas.filter(c => c.pago && c.recorrente).forEach(c => { const venc = proxMes(c.venc), mes = venc.slice(0, 7);
-        if (!s.contas.some(x => x.nome.toLowerCase() === c.nome.toLowerCase() && x.venc.startsWith(mes))) s.contas.push({...c, id: uid(), venc, pago: false, pagoEm: null}); }); F.save(s); Sheet.close(); ui.cMes = 0; App.render(); toast(`${plural(novas.length, 'conta importada', 'contas importadas')}`);
+        if (!s.contas.some(x => x.nome.toLowerCase() === c.nome.toLowerCase() && x.venc.startsWith(mes))) s.contas.push({...c, id: uid(), venc, valor: c.tipoValor === 'variavel' ? null : c.valor, pago: false, pagoEm: null}); }); F.save(s); Sheet.close(); ui.cMes = 0; App.render(); toast(`${plural(novas.length, 'conta importada', 'contas importadas')}`);
     },
     cIrVencida: () => { const v = abertas(F.st()).find(c => diasAte(c.venc) < 0); if (!v) return; const d = fromKey(v.venc), n = new Date(); ui.cMes = (d.getFullYear() - n.getFullYear()) * 12 + d.getMonth() - n.getMonth(); App.render(); },
-    cNova: () => Sheet.open({title: 'Nova conta', render: form, state: {nome: '', valor: '', venc: dkey(), cat: 'outros', recorrente: true, obs: ''}}),
+    cNova: () => Sheet.open({title: 'Nova conta', render: form, state: {nome: '', valor: '', venc: dkey(), cat: 'outros', recorrente: true, tipoValor: 'fixo', obs: ''}}),
     cEditar: d => { const c = F.st().contas.find(x => x.id === d.id); Sheet.open({title: 'Editar conta', render: form, state: {...clone(c), valor: String(c.valor || '').replace('.', ',')}}); },
     cfCat: d => { Sheet.st.cat = d.c; Sheet.refresh(); },
     cfRec: () => { Sheet.st.recorrente = !Sheet.st.recorrente; Sheet.refresh(); },
+    cfTipo: d => { Sheet.st.tipoValor = d.t; Sheet.refresh(); },
     cSalvar: () => {
       const st = Sheet.st, s = F.st(), nome = (st.nome || '').trim(), valor = parseValor(st.valor);
       if (!nome) { st.err = 'Dê um nome à conta.'; return Sheet.refresh(); }
-      if (!valor) { st.err = 'Informe o valor (ex.: 189,90).'; return Sheet.refresh(); }
+      if (!valor && !variavel(st)) { st.err = 'Informe o valor (ex.: 189,90). Se muda todo mês, escolha Variável.'; return Sheet.refresh(); }
+      if (!valor && st.pago) { st.err = 'Esta conta está paga: informe quanto foi pago.'; return Sheet.refresh(); }
       if (!st.venc) { st.err = 'Escolha a data de vencimento.'; return Sheet.refresh(); }
-      const c = {id: st.id || uid(), serie: st.serie || uid(), nome, valor, venc: st.venc, cat: st.cat, recorrente: !!st.recorrente, pago: !!st.pago, pagoEm: st.pagoEm || null, obs: (st.obs || '').trim()};
+      const c = {id: st.id || uid(), serie: st.serie || uid(), nome, valor: valor || null, tipoValor: variavel(st) ? 'variavel' : 'fixo', venc: st.venc, cat: st.cat, recorrente: !!st.recorrente, pago: !!st.pago, pagoEm: st.pagoEm || null, obs: (st.obs || '').trim()};
       const i = s.contas.findIndex(x => x.id === c.id);
       if (i >= 0) s.contas[i] = c; else s.contas.push(c);
+      if (st.pagarDepois && c.recorrente) { const venc = proxMes(c.venc); if (!s.contas.some(x => x.serie === c.serie && x.venc === venc)) s.contas.push({...clone(c), id: uid(), venc, valor: variavel(c) ? null : c.valor, pago: false, pagoEm: null}); }
       F.save(s); Sheet.close();
       const n = new Date(), v = fromKey(c.venc); ui.cMes = (v.getFullYear() - n.getFullYear()) * 12 + v.getMonth() - n.getMonth();
       App.render(); toast(i >= 0 ? 'Conta atualizada' : 'Conta cadastrada');
     },
     cPagar: d => {
       const s = F.st(), c = s.contas.find(x => x.id === d.id);
+      if (!c.pago && !c.valor) { Sheet.open({title: 'Quanto veio?', render: form, state: {...clone(c), valor: '', pago: true, pagoEm: Date.now(), err: `Informe o valor de ${c.nome} deste mês e toque em Salvar.`, pagarDepois: true}}); return; }
       c.pago = !c.pago; c.pagoEm = c.pago ? Date.now() : null;
       if (c.pago) { buzz(15);
         if (c.recorrente) { const venc = proxMes(c.venc);
-          if (!s.contas.some(x => x.serie === c.serie && x.venc === venc)) { s.contas.push({...clone(c), id: uid(), venc, pago: false, pagoEm: null}); toast(`Paga! A de ${fromKey(venc).toLocaleDateString('pt-BR', {month: 'long'})} já está na lista`); }
+          if (!s.contas.some(x => x.serie === c.serie && x.venc === venc)) { s.contas.push({...clone(c), id: uid(), venc, valor: variavel(c) ? null : c.valor, pago: false, pagoEm: null}); toast(`Paga! A de ${fromKey(venc).toLocaleDateString('pt-BR', {month: 'long'})} já está na lista`); }
           else toast('Conta paga'); }
         else toast('Conta paga');
       }
