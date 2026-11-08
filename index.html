@@ -531,7 +531,7 @@ const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e)
    "cabelo", "cabelo-evo-<id>", "perfil"). Na conta: data/users/<id>/<doc> (privado).
    Espelhado no navegador: abre na hora e funciona sem conexão. */
 const CACHE = 'meu-ritual:v1';
-const APP_VERSAO = '18'; // o montar_site.py troca pelo número da versão do site
+const APP_VERSAO = '19'; // o montar_site.py troca pelo número da versão do site
 /* IndexedDB: guarda tudo no aparelho com bem mais espaço que o localStorage (fotos incluídas) */
 const IDB = {
   db: null,
@@ -643,7 +643,15 @@ window.addEventListener('pagehide', () => Store.cacheNow());
 /* ---------- Conta na nuvem (Firebase, só na versão site) ----------
    Login por e-mail e senha. Os dados ficam em users/<uid>/docs/<doc> no Firestore, protegidos
    pelas regras do projeto (cada pessoa só lê e grava os próprios). A cópia no aparelho continua. */
-const FIREBASE = null; // preenchido com a configuração do projeto (firebaseConfig)
+// configuração pública do projeto Firebase "meu-ritual" (não é senha: os dados são protegidos pelas regras do Firestore)
+const FIREBASE = {
+  apiKey: 'AIzaSyC4PCD13mZv0hJtXkuYLHsjAPOPioRhf0Q',
+  authDomain: 'meu-ritual-fb0f0.firebaseapp.com',
+  projectId: 'meu-ritual-fb0f0',
+  storageBucket: 'meu-ritual-fb0f0.firebasestorage.app',
+  messagingSenderId: '134370968321',
+  appId: '1:134370968321:web:7b4e6c73caab461a521100'
+};
 const Nuvem = {
   user: null, auth: null, fs: null, iniciada: false,
   configurada: () => !!(FIREBASE && FIREBASE.apiKey),
