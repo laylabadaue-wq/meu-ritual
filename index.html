@@ -1498,7 +1498,9 @@ function viewSessao() {
     </div>
     <div class="sess-nav"><button class="btn sand" data-act="sIr" data-i="${i - 1}" ${i ? '' : 'disabled'} aria-label="Exercício anterior">${ic('back')}</button>
     ${i < n - 1 ? `<button class="btn ${done === it.series.length ? 'primary' : 'sand'}" data-act="sIr" data-i="${i + 1}">Próximo exercício ${ic('next')}</button>`
-      : `<button class="btn primary" data-act="sFinalizar">${ic('check')} Finalizar treino</button>`}</div>`;
+      : `<button class="btn primary" data-act="sFinalizar">${ic('check')} Finalizar treino</button>`}</div>
+    <div class="row" style="justify-content:space-between;margin-top:6px">${i < n - 1 ? `<button class="btn link sm" data-act="sFinalizar">Finalizar agora</button>` : '<span></span>'}
+      <button class="btn link sm" style="color:var(--danger)" data-act="sDescartar">${ic('x')} Cancelar treino</button></div>`;
 }
 function setRow(it, i, se, j) {
   const v = se.reps ?? it.reps, d = se.feito ? v - it.reps : 0;
@@ -1541,7 +1543,8 @@ function viewCalendario() {
       <div><p class="sm"><b>${plural(total, 'treino')}</b> ${ui.calOff === 0 ? 'nesta semana' : 'na semana'}</p><p class="sm muted">${plural(diasTreino, 'dia ativo', 'dias ativos')}</p></div></div>
     <div class="cal-days">${dias.map(d => { const k = dkey(d), xs = porDia[k] || [];
       return `<div class="cal-day ${k === hoje ? 'today' : ''}"><div class="d"><span>${DIA_CURTO[d.getDay()]}</span><b>${d.getDate()}</b></div><div class="s">
-        ${xs.length ? xs.map(x => `<div class="done"><i>${ic('check')}</i><span>${esc(x.nome)} <span class="muted sm">· ${fmtDur(x.fim - x.inicio)}</span></span></div>`).join('') : `<span class="none">${k > hoje ? '' : '—'}</span>`}</div></div>`; }).join('')}</div></section>
+        ${xs.length ? xs.map(x => `<button class="done" style="all:unset;display:flex;align-items:center;gap:8px;font-size:.9rem;cursor:pointer" data-act="hExcluir" data-id="${x.id}" aria-label="Apagar ${esc(x.nome)} deste dia"><i style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;flex:none">${ic('check')}</i><span class="grow">${esc(x.nome)} <span class="muted sm">· ${fmtDur(x.fim - x.inicio)}</span></span><span class="muted">${ic('x')}</span></button>`).join('') : `<span class="none">${k > hoje ? '' : '—'}</span>`}</div></div>`; }).join('')}</div>
+      <p class="sm muted" style="margin-top:8px">Lançou um treino por engano? Toque nele para apagar.</p></section>
     <section class="card"><div class="between" style="margin-bottom:10px"><h3>Últimas 12 semanas</h3><span class="tag"><span class="dot" style="--c:var(--sage-2)"></span>treinou</span></div>
       <div class="habit">${grid}</div><p class="sm muted" style="margin-top:10px">Toque em uma coluna para ver aquela semana. Só entram treinos finalizados e salvos.</p></section>`;
 }
@@ -1603,7 +1606,7 @@ function viewHistorico(s) {
       <p class="sm muted">${DIA_CURTO[new Date(x.inicio).getDay()]}, ${fmtData(new Date(x.inicio))} · ${fmtDur(x.fim - x.inicio)} · ${r.feitas}/${r.total} séries</p></div>
       <span class="pct" style="color:${r.pct >= 100 ? 'var(--ok)' : r.pct >= 80 ? 'var(--ink)' : 'var(--warn)'}">${r.pct}%</span></div>
       ${open ? `<div class="hdet">${x.itens.map(it => `<div><span>${esc(it.nome)}</span><span>${it.feitas.map(v => v == null ? '–' : v).join(' · ')} <small>de ${it.plan}×${it.reps}</small></span></div>`).join('')}</div>` : ''}</button>
-      ${open ? `<div style="text-align:right;margin-top:4px"><button class="btn link sm" data-act="hExcluir" data-id="${x.id}">Excluir este registro</button></div>` : ''}</div>`; }).join('');
+      ${open ? `<div style="text-align:right;margin-top:6px"><button class="btn danger sm" data-act="hExcluir" data-id="${x.id}">${ic('x')} Apagar este treino</button></div>` : ''}</div>`; }).join('');
   return `<div class="tiles">
       <div class="tile"><b>${H.length}</b><span>treinos realizados</span></div>
       <div class="tile"><b>${vals[7]}${meta ? `<small style="font-size:1rem;color:var(--muted)">/${meta}</small>` : ''}</b><span>nesta semana</span></div>
@@ -1783,7 +1786,7 @@ App.module({
     sMais: d => { const s = T.st(), it = s.ativa.itens[+d.i], se = it.series[+d.j]; se.reps = (se.reps ?? it.reps) + PASSO[it.unid]; T.save(s); },
     sReps: (d, el) => { const s = T.st(), n = parseInt(el.value, 10); if (!Number.isFinite(n) || n < 0) return App.render(); s.ativa.itens[+d.i].series[+d.j].reps = n; T.save(s); },
     sDescanso: d => { const it = T.st().ativa.itens[+d.i]; Timer.start(it.descanso, it.nome); },
-    sDescartar: () => Sheet.confirm({title: 'Descartar treino?', text: 'As séries marcadas neste treino não serão salvas no histórico nem no calendário.', ok: 'Descartar', danger: true,
+    sDescartar: () => Sheet.confirm({title: 'Cancelar este treino?', text: 'Ele não será salvo: nada vai para o histórico nem para o calendário.', ok: 'Cancelar treino', danger: true,
       onOk: () => { const s = T.st(); s.ativa = null; T.save(s); Timer.stop(); Wake.off(); App.go('treinos'); }}),
     sFinalizar: () => {
       const a = T.st().ativa, x = paraSalvar(a), r = resumoSessao(x), pend = r.total - r.feitas;
@@ -1791,7 +1794,8 @@ App.module({
         <div class="sum-grid"><div><b>${fmtDur(x.fim - x.inicio)}</b><span>duração</span></div><div><b>${r.feitas}/${r.total}</b><span>séries</span></div><div><b>${r.pct}%</b><span>do planejado</span></div></div>
         ${pend ? `<p class="note warn">${plural(pend, 'série não marcada', 'séries não marcadas')} ${pend === 1 ? 'ficará registrada' : 'ficarão registradas'} como não ${pend === 1 ? 'feita' : 'feitas'}.</p>` : ''}
         <div class="hdet">${x.itens.map(it => `<div><span>${esc(it.nome)}</span><span>${it.feitas.map(v => v == null ? '–' : v).join(' · ')} <small>de ${it.plan}×${it.reps}</small></span></div>`).join('')}</div>
-        <div class="row-btns"><button class="btn ghost" data-act="sheetClose">Continuar</button><button class="btn primary" data-act="sSalvar">Salvar treino</button></div>`});
+        <div class="row-btns"><button class="btn ghost" data-act="sheetClose">Continuar treinando</button><button class="btn primary" data-act="sSalvar">Salvar treino</button></div>
+        <button class="btn link sm" style="color:var(--danger)" data-act="sDescartar">Cancelar treino sem salvar</button>`});
     },
     sSalvar: () => {
       const s = T.st(); if (!s.ativa) return Sheet.close();
@@ -1806,10 +1810,10 @@ App.module({
     hGrupo: d => { ui.hGrupo = d.g; App.render(); },
     hAbrir: d => { ui.hOpen = ui.hOpen === d.id ? null : d.id; App.render(); },
     hTodos: () => { ui.hTodos = !ui.hTodos; App.render(); },
-    hExcluir: d => Sheet.confirm({title: 'Excluir registro?', text: 'Este treino sai do histórico, do calendário e das estatísticas.', ok: 'Excluir', danger: true, onOk: () => {
+    hExcluir: d => { const x = T.hist().find(y => y.id === d.id); if (!x) return; Sheet.confirm({title: 'Apagar este treino?', text: `"${x.nome}" de ${DIA_LONGO[new Date(x.inicio).getDay()]}, ${fmtData(new Date(x.inicio))} sai do histórico, do calendário e das metas. Não dá para desfazer.`, ok: 'Apagar treino', danger: true, onOk: () => {
       for (const k of Store.ids('treinos-hist-')) { const h = Store.get(k), n = h.sessoes.length; h.sessoes = h.sessoes.filter(x => x.id !== d.id); if (h.sessoes.length !== n) { Store.put(k, h); break; } }
-      toast('Registro excluído');
-    }})
+      toast('Treino apagado');
+    }}); }
   }
 });
 })();
