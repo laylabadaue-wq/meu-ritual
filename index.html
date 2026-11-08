@@ -530,7 +530,7 @@ const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e)
    "cabelo", "cabelo-evo-<id>", "perfil"). Na conta: data/users/<id>/<doc> (privado).
    Espelhado no navegador: abre na hora e funciona sem conexão. */
 const CACHE = 'meu-ritual:v1';
-const APP_VERSAO = '14'; // o montar_site.py troca pelo número da versão do site
+const APP_VERSAO = '15'; // o montar_site.py troca pelo número da versão do site
 /* IndexedDB: guarda tudo no aparelho com bem mais espaço que o localStorage (fotos incluídas) */
 const IDB = {
   db: null,
@@ -908,11 +908,30 @@ const Sheet = {
   }
 };
 
+/* ---------- Guia do ChatGPT (usado nas importações) ---------- */
+function guiaGPT(st, chave, oque, botao) {
+  const caixa = st.guia ? `<section class="card soft" style="display:grid;gap:10px"><h3>Gerar a lista com o ChatGPT</h3>
+    <ol class="sm" style="margin:0;padding-left:18px;display:grid;gap:6px">
+      <li>Toque em <b>Copiar prompt</b>.</li>
+      <li>Abra o ChatGPT, cole o prompt e, no final, coloque ${oque}.</li>
+      <li>Copie a resposta do ChatGPT (só as linhas), volte aqui, cole no campo abaixo e toque em <b>${botao}</b>.</li></ol>
+    <textarea class="t" id="gpt-prompt" rows="7" readonly style="font-size:.8rem">${esc(App.prompts[chave])}</textarea>
+    <button class="btn primary" data-act="gptCopiar" data-k="${chave}">${ic('copy')} Copiar prompt</button></section>` : '';
+  return `<button class="btn ${st.guia ? 'sand' : 'ghost'}" data-act="gptGuia">${ic('sparkle')} ${st.guia ? 'Esconder o guia do ChatGPT' : 'Gerar a lista com o ChatGPT'}</button>${caixa}`;
+}
+function escolherTexto(cb) {
+  const i = document.createElement('input'); i.type = 'file'; i.accept = '.csv,.txt,.tsv,text/*';
+  i.onchange = () => { const f = i.files && i.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => cb(String(r.result)); r.readAsText(f); };
+  i.click();
+}
+const limparLinha = l => l.replace(/^\s*(?:[-*•]|\d+[.)]|\[\s?[xX]?\s?\])\s+/, '').replace(/"/g, ' ').trim();
+
 /* ---------- App / roteador ---------- */
 const App = {
   mods: [], routes: {}, actions: {}, ui: {}, last: '', raf: 0,
   areas: {beleza: {label: 'Beleza', icon: 'leaf', eyebrow: 'Pele, cabelo e produtos'}},
   hooks: {usos: [], removerProduto: [], migrar: [], semear: [], avisos: []},
+  prompts: {},
   /* primeira abertura: carrega suas rotinas. Só com resposta definitiva do armazenamento,
      para nunca sobrescrever dados da conta que ainda não chegaram. */
   semear() {
@@ -1036,6 +1055,11 @@ Object.assign(App.actions, {
   go: d => { if (d.per) App.ui.kPer = d.per; if (d.dia != null) App.ui.kDia = +d.dia; if (d.tab) App.ui.tTab = d.tab; App.go(d.r); },
   tmToggle: () => Timer.toggle(), tmRestart: () => Timer.restart(), tmAdd: () => Timer.add(15), tmStop: () => Timer.stop(),
   ajustes: () => openAjustes(),
+  gptGuia: () => { Sheet.st.guia = !Sheet.st.guia; Sheet.refresh(); },
+  gptCopiar: async d => {
+    try { await navigator.clipboard.writeText(App.prompts[d.k]); toast('Prompt copiado — cole no ChatGPT'); }
+    catch (e) { const t = $('#gpt-prompt'); t.focus(); t.select(); toast('Selecionei o prompt: toque em Copiar no menu do iPhone'); }
+  },
   fotoPick: () => {
     const st = Sheet.st, pr = Fotos.pick();
     pr.then(async file => {
@@ -2531,10 +2555,87 @@ function viewColecao() {
   const todos = Produtos.lista(), ps = ui.colTipo === 'todos' ? todos : Produtos.lista(ui.colTipo);
   const chips = [['todos', 'Tudo', todos.length], ['pele', 'Pele', Produtos.lista('pele').length], ['cabelo', 'Cabelo', Produtos.lista('cabelo').length]]
     .map(([k, l, n]) => `<button class="chip" aria-pressed="${ui.colTipo === k}" data-act="colTipo" data-t="${k}">${l}<span class="n">${n}</span></button>`).join('');
-  return `<div class="stack"><div class="between"><div class="chips wrap">${chips}</div><button class="btn sm primary" data-act="colNovo">${ic('plus')} Produto</button></div>
+  return `<div class="stack"><div class="between"><div class="chips wrap">${chips}</div><div class="row" style="gap:6px"><button class="btn sm ghost" data-act="piAbrir">Importar</button><button class="btn sm primary" data-act="colNovo">${ic('plus')} Produto</button></div></div>
     ${ps.length ? `<div class="pgrid">${ps.slice().sort((a, b) => a.nome.localeCompare(b.nome)).map(p => `<button class="pcard" data-act="colAbrir" data-id="${p.id}">${pimg(p)}
       <span><h3>${esc(p.nome)}</h3>${p.marca || p.finalidade ? `<p>${esc(p.marca || p.finalidade)}</p>` : ''}</span><span class="tag">${ic(CATS[p.cat][1] === 'pele' ? 'drop' : 'hair')} ${esc(CATS[p.cat][0])}</span></button>`).join('')}</div>`
       : `<div class="card empty">${ic('bag')}<h2>Sua coleção</h2><p class="muted sm">Cadastre os produtos que você já tem. Eles ficam disponíveis nas rotinas de pele e nos registros do cabelo.</p></div>`}</div>`;
+}
+App.prompts.colecao = `Organize meus produtos de beleza em uma lista para eu importar num app. Responda SÓ com as linhas, sem título, explicação, numeração ou bloco de código.
+
+Formato de cada linha (um produto por linha):
+Nome do produto; Marca; pele ou cabelo; Categoria; Finalidade // observação
+
+Regras:
+- Nome é obrigatório. Deixe vazio o que não souber, mas mantenha os ponto e vírgula (ex.: "Sérum; ; pele; Sérum; ").
+- Terceiro campo: escreva só "pele" ou "cabelo".
+- Categoria, use uma destas:
+  Pele: Limpeza, Tônico, Sérum, Hidratação, Protetor solar, Tratamento, Esfoliação, Máscara facial, Área dos olhos, Outro
+  Cabelo: Shampoo, Condicionador, Máscara capilar, Leave-in, Óleo, Finalizador, Ampola, Outro
+- Finalidade: para que serve, em poucas palavras (ex.: controle de oleosidade, hidratação, anti-frizz).
+- Observação é opcional, depois de //.
+
+Exemplos:
+Sérum de niacinamida; The Ordinary; pele; Sérum; poros e oleosidade
+Protetor solar FPS 50; La Roche-Posay; pele; Protetor solar; proteção diária // reaplicar à tarde
+Máscara de hidratação; Lola; cabelo; Máscara capilar; hidratação semanal
+
+Meus produtos:
+`;
+const semAc = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+const CAT_TXT = [
+  [/shampoo|xampu/, 'shampoo'], [/condicionador/, 'condicionador'], [/leave[\s-]?in|creme de pentear/, 'leave_in'],
+  [/finalizador|gelatina|mousse|spray|pomada/, 'finalizador'], [/ampola|tonico capilar/, 'tratamento_cap'],
+  [/protetor|fps|filtro solar/, 'protetor'], [/area dos olhos|olhos|olheira/, 'olhos'], [/esfolia|peeling/, 'esfoliante'],
+  [/limpeza|sabonete|cleanser|micelar|demaquil/, 'limpeza'], [/tonico|toner|bruma/, 'tonico'], [/serum|vitamina c|niacinamida/, 'serum'],
+  [/hidrat|creme facial|gel creme/, 'hidratante'], [/tratamento|retinol|acido|clareador|pad/, 'tratamento'],
+  [/mascara|argila/, 'mascara'], [/oleo|oil/, 'oleo']
+];
+function catDe(txt, tipo) {
+  const t = semAc(txt);
+  const exato = Object.keys(CATS).find(k => semAc(CATS[k][0]).replace(/\s*\(.*\)/, '') === t && (!tipo || CATS[k][1] === tipo));
+  if (exato) return exato;
+  for (const [re, k] of CAT_TXT) if (re.test(t)) {
+    if (k === 'mascara' && tipo === 'cabelo') return 'mascara_cap';
+    if (k === 'tratamento' && tipo === 'cabelo') return 'tratamento_cap';
+    if (k === 'hidratante' && tipo === 'cabelo') return 'mascara_cap';
+    return k;
+  }
+  return '';
+}
+function lerProdutos(txt) {
+  const out = [];
+  String(txt || '').split(/\r?\n/).forEach(l => {
+    const corte = l.indexOf('//'), obs = corte >= 0 ? l.slice(corte + 2).trim() : '';
+    const f = limparLinha(corte >= 0 ? l.slice(0, corte) : l).split(/\s*;\s*/).map(x => x.trim());
+    const nome = f[0];
+    if (!nome || /^`{3}/.test(nome)) return;
+    let tipo = /cabelo/i.test(f[2] || '') ? 'cabelo' : /pele|rosto|facial/i.test(f[2] || '') ? 'pele' : '';
+    let cat = catDe(f[3], tipo) || catDe(nome, tipo);
+    if (!tipo) tipo = cat ? CATS[cat][1] : 'pele';
+    if (!cat || CATS[cat][1] !== tipo) cat = tipo === 'cabelo' ? 'outro_cap' : 'outro';
+    out.push({nome: nome.charAt(0).toUpperCase() + nome.slice(1), marca: f[1] || '', cat, finalidade: f[4] || '', obs, sel: true});
+  });
+  return out;
+}
+function importProdutos(st) {
+  if (st.itens) {
+    const ja = x => !!Produtos.duplicado({id: null, nome: x.nome, marca: x.marca});
+    const n = st.itens.filter(x => x.sel && !ja(x)).length;
+    return `<p class="muted sm">${plural(st.itens.length, 'produto encontrado', 'produtos encontrados')}. Desmarque o que não quiser. Depois dá para pôr foto em cada um.</p>
+      <div class="steps">${st.itens.map((x, i) => `<div class="step" style="grid-template-columns:auto auto 1fr;cursor:default">
+        <button class="box" role="checkbox" aria-checked="${x.sel && !ja(x)}" data-act="piSel" data-i="${i}" ${ja(x) ? 'disabled' : ''}>${ic('check')}</button>${pimg(x, 40)}
+        <span style="min-width:0"><p class="nome">${esc(x.nome)}</p><p class="tag">${ja(x) ? 'já está na coleção' : [x.marca, CATS[x.cat][0], x.finalidade].filter(Boolean).map(esc).join(' · ')}</p></span></div>`).join('')}</div>
+      <div class="row-btns"><button class="btn ghost" data-act="piVoltar">Voltar</button><button class="btn primary" data-act="piOk" ${n ? '' : 'disabled'}>Importar ${plural(n, 'produto')}</button></div>`;
+  }
+  return `${guiaGPT(st, 'colecao', 'seus produtos: tire uma <b>foto</b> da sua prateleira ou nécessaire, anexe prints das compras ou escreva a lista', 'Ver produtos encontrados')}
+    <p class="muted sm">Ou cole uma lista, um produto por linha (só o nome é obrigatório):</p>
+    <p class="note sm" style="white-space:pre-line">Sérum de vitamina C; Principia; pele; Sérum; antioxidante
+Shampoo antirresíduo; Lola; cabelo; Shampoo; limpeza profunda
+Protetor solar FPS 50; ; pele; Protetor solar</p>
+    <button class="btn ghost" data-act="piArquivo">${ic('book')} Escolher arquivo</button>
+    <textarea class="t" id="pi-txt" data-bind="txt" rows="6" placeholder="Cole aqui seus produtos">${esc(st.txt || '')}</textarea>
+    ${st.err ? `<p class="note warn">${esc(st.err)}</p>` : ''}
+    <button class="btn primary" data-act="piLer">Ver produtos encontrados</button>`;
 }
 function detalhe(p) {
   const usos = Produtos.usos(p.id);
@@ -2550,6 +2651,19 @@ App.module({
   routes: {colecao: viewColecao},
   actions: {
     colTipo: d => { ui.colTipo = d.t; App.render(); },
+    piAbrir: () => Sheet.open({title: 'Importar produtos', render: importProdutos, state: {txt: ''}}),
+    piArquivo: () => { const st = Sheet.st; escolherTexto(t => { if (Sheet.st !== st) return; st.txt = t; App.actions.piLer(); }); },
+    piLer: () => { const st = Sheet.st, itens = lerProdutos(st.txt);
+      if (!itens.length) { st.err = 'Não encontrei produtos. Escreva um por linha, por exemplo: Sérum de vitamina C; Principia; pele; Sérum'; return Sheet.refresh(); }
+      st.err = ''; st.itens = itens; Sheet.refresh(); },
+    piSel: d => { const x = Sheet.st.itens[+d.i]; x.sel = !x.sel; Sheet.refresh(); },
+    piVoltar: () => { delete Sheet.st.itens; Sheet.refresh(); },
+    piOk: () => {
+      const novos = Sheet.st.itens.filter(x => x.sel && !Produtos.duplicado({id: null, nome: x.nome, marca: x.marca}));
+      const d = Produtos.doc();
+      novos.forEach(x => d.produtos.push({id: uid(), nome: x.nome, marca: x.marca, cat: x.cat, finalidade: x.finalidade, obs: x.obs, foto: null}));
+      Store.put('colecao', d); Sheet.close(); toast(`${plural(novos.length, 'produto importado', 'produtos importados')}`);
+    },
     colNovo: () => abrirProduto({tipo: ui.colTipo === 'cabelo' ? 'cabelo' : 'pele'}),
     colAbrir: d => { const p = Produtos.get(d.id); Sheet.open({title: 'Meu produto', render: () => detalhe(p)}); },
     colEditar: d => abrirProduto(Produtos.get(d.id)),
@@ -2736,7 +2850,7 @@ function lerContas(txt) {
   });
   return out;
 }
-const PROMPT_CONTAS = `Organize minhas contas em uma lista para eu importar num app. Responda SÓ com as linhas, sem título, explicação, numeração ou bloco de código.
+App.prompts.contas = `Organize minhas contas em uma lista para eu importar num app. Responda SÓ com as linhas, sem título, explicação, numeração ou bloco de código.
 
 Formato de cada linha (uma conta por linha):
 Nome; valor; dd/mm/aaaa; marcações // observação
@@ -2771,14 +2885,7 @@ function importForm(st) {
       ${st.itens.some(x => x.semData) ? `<p class="note warn">Linhas sem data ficaram com vencimento hoje. Ajuste depois tocando na conta.</p>` : ''}
       <div class="row-btns"><button class="btn ghost" data-act="ciVoltar">Voltar</button><button class="btn primary" data-act="ciOk" ${n ? '' : 'disabled'}>Importar ${plural(n, 'conta')}</button></div>`;
   }
-  const guia = st.guia ? `<section class="card soft" style="display:grid;gap:10px"><h3>Gerar a lista com o ChatGPT</h3>
-      <ol class="sm" style="margin:0;padding-left:18px;display:grid;gap:6px">
-        <li>Toque em <b>Copiar prompt</b>.</li>
-        <li>Abra o ChatGPT, cole o prompt e, no final, coloque suas contas: anexe um <b>print</b> do app do banco, uma <b>planilha</b> ou escreva do seu jeito.</li>
-        <li>Copie a resposta do ChatGPT (só as linhas), volte aqui, cole no campo abaixo e toque em <b>Ver contas encontradas</b>.</li></ol>
-      <textarea class="t" id="ci-prompt" rows="7" readonly style="font-size:.8rem">${esc(PROMPT_CONTAS)}</textarea>
-      <button class="btn primary" data-act="ciCopiarPrompt">${ic('copy')} Copiar prompt</button></section>` : '';
-  return `<button class="btn ${st.guia ? 'sand' : 'ghost'}" data-act="ciGuia">${ic('sparkle')} ${st.guia ? 'Esconder o guia do ChatGPT' : 'Gerar a lista com o ChatGPT'}</button>${guia}
+  return `${guiaGPT(st, 'contas', 'suas contas: anexe um <b>print</b> do app do banco, uma <b>planilha</b> ou escreva do seu jeito', 'Ver contas encontradas')}
     <p class="muted sm">No seu app de finanças, procure <b>Exportar</b> (CSV ou planilha) e escolha o arquivo aqui. Ou cole uma lista, uma conta por linha:</p>
     <p class="note sm" style="white-space:pre-line">Aluguel; 1.500,00; dia 5
 Luz; 189,90; 12/11
@@ -2822,11 +2929,6 @@ App.module({
   actions: {
     cMes: d => { ui.cMes += +d.d; App.render(); },
     cImportar: () => Sheet.open({title: 'Importar contas', render: importForm, state: {txt: ''}}),
-    ciGuia: () => { Sheet.st.guia = !Sheet.st.guia; Sheet.refresh(); },
-    ciCopiarPrompt: async () => {
-      try { await navigator.clipboard.writeText(PROMPT_CONTAS); toast('Prompt copiado — cole no ChatGPT'); }
-      catch (e) { const t = $('#ci-prompt'); t.focus(); t.select(); toast('Selecionei o prompt: toque em Copiar no menu do iPhone'); }
-    },
     ciArquivo: () => {
       const st = Sheet.st, i = document.createElement('input'); i.type = 'file'; i.accept = '.csv,.txt,.tsv,text/*';
       i.onchange = () => { const f = i.files && i.files[0]; if (!f) return; const r = new FileReader();
@@ -2920,7 +3022,7 @@ function homeFim() {
   const pend = s.itens.filter(x => !x.feito && naSec(x)).sort(ordem), feitos = s.itens.filter(x => x.feito && naSec(x)).sort((a, b) => (b.feitoEm || 0) - (a.feitoEm || 0));
   const conta = id => s.itens.filter(x => !x.feito && (id === 'todas' || x.sec === id)).length;
   const chips = [{id: 'todas', nome: 'Todas'}, ...s.secoes].map(c => `<button class="chip" aria-pressed="${sec === c.id}" data-act="tfSec" data-s="${c.id}">${esc(c.nome)}${conta(c.id) ? `<span class="n">${conta(c.id)}</span>` : ''}</button>`).join('')
-    + `<button class="chip" data-act="tfSecoes" aria-label="Criar ou apagar seções">${ic('plus')} Seção</button>`;
+    + `<button class="chip" data-act="tfSecoes" aria-label="Criar ou apagar seções">${ic('plus')} Seção</button><button class="chip" data-act="tiAbrir">${ic('sparkle')} Importar</button>`;
   let lista;
   if (!pend.length) lista = `<p class="sm muted" style="margin-top:10px">Nenhuma tarefa pendente${sec !== 'todas' ? ' em ' + esc(secNome(s, sec)) : ''}.</p>`;
   else if (sec !== 'todas') lista = `<div class="steps" style="margin-top:4px">${pend.map(linha).join('')}</div>`;
@@ -2960,6 +3062,74 @@ const adicionar = () => {
   setTimeout(() => { const n = $('#tf-nova'); if (n) n.focus(); }, 30);
 };
 document.addEventListener('keydown', e => { if (e.target.id === 'tf-nova' && e.key === 'Enter') { e.preventDefault(); adicionar(); } });
+App.prompts.tarefas = `Organize minhas tarefas em uma lista para eu importar num app. Responda SÓ com as linhas, sem título, explicação, numeração ou bloco de código.
+
+Formato de cada linha (uma tarefa por linha):
+Tarefa; dd/mm/aaaa; hh:mm; Seção; repetição // nota
+
+Regras:
+- Só o nome da tarefa é obrigatório. Deixe de fora o que não souber (data, horário, seção, repetição, nota).
+- Data no formato dd/mm/aaaa. Horário no formato hh:mm (24 h).
+- Seção: use uma destas quando fizer sentido: Faculdade, Compromissos, Pessoal (ou crie outra curta, como Trabalho ou Casa).
+- Repetição (opcional): todo dia, toda semana ou todo mês.
+- Nota é opcional, depois de //.
+
+Exemplos:
+Entregar trabalho de estatística; 14/11/2026; 23:59; Faculdade // pelo portal
+Dentista; 13/11/2026; 15:00; Compromissos
+Tomar vitamina; 08:00; Pessoal; todo dia
+Comprar presente da mãe; Pessoal
+
+Minhas tarefas:
+`;
+function lerTarefas(txt) {
+  const hoje = new Date(), out = [];
+  const REPS = [[/^(todo dia|todos os dias|di[aá]ri[oa])$/i, 'diario'], [/^(toda semana|semanal)$/i, 'semanal'], [/^(todo m[eê]s|mensal)$/i, 'mensal'], [/^n[aã]o repete$/i, 'nao']];
+  String(txt || '').split(/\r?\n/).forEach(l => {
+    const corte = l.indexOf('//'), nota = corte >= 0 ? l.slice(corte + 2).trim() : '';
+    const partes = limparLinha(corte >= 0 ? l.slice(0, corte) : l).split(/\s*;\s*/).map(x => x.trim());
+    const titulo = partes.shift();
+    if (!titulo || /^`{3}/.test(titulo)) return;
+    let data = '', hora = '', rep = 'nao', sec = '', m;
+    const extra = [];
+    partes.filter(Boolean).forEach(t => {
+      if ((m = t.match(/^(\d{4})-(\d{2})-(\d{2})$/))) data = `${m[1]}-${m[2]}-${m[3]}`;
+      else if ((m = t.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/))) { let y = m[3] ? +m[3] : hoje.getFullYear(); if (y < 100) y += 2000; data = dkey(new Date(y, +m[2] - 1, +m[1])); }
+      else if (/^hoje$/i.test(t)) data = dkey(hoje);
+      else if (/^amanh[aã]$/i.test(t)) { const d = new Date(); d.setDate(d.getDate() + 1); data = dkey(d); }
+      else if ((m = t.match(/^(\d{1,2})(?:[:h](\d{2})?)h?$/i)) && +m[1] < 24) hora = `${pad(+m[1])}:${m[2] || '00'}`;
+      else if (REPS.some(([re]) => re.test(t))) rep = REPS.find(([re]) => re.test(t))[1];
+      else if (!sec) sec = t;
+      else extra.push(t);
+    });
+    if (rep !== 'nao' && !data) data = dkey(hoje);
+    if (hora && !data) data = dkey(hoje);
+    out.push({titulo: titulo.charAt(0).toUpperCase() + titulo.slice(1), data, hora, rep, secNome: sec, nota: [nota, ...extra].filter(Boolean).join(' · '), sel: true});
+  });
+  return out;
+}
+function importTarefas(st) {
+  const s = D.st(), ja = x => s.itens.some(y => !y.feito && y.titulo.toLowerCase() === x.titulo.toLowerCase() && (y.data || '') === x.data);
+  if (st.itens) {
+    const n = st.itens.filter(x => x.sel && !ja(x)).length;
+    const novasSec = [...new Set(st.itens.filter(x => x.secNome && !s.secoes.some(c => c.nome.toLowerCase() === x.secNome.toLowerCase())).map(x => x.secNome))];
+    return `<p class="muted sm">${plural(st.itens.length, 'tarefa encontrada', 'tarefas encontradas')}. Desmarque o que não quiser.</p>
+      <div class="steps">${st.itens.map((x, i) => `<div class="step" style="grid-template-columns:auto 1fr;cursor:default">
+        <button class="box" role="checkbox" aria-checked="${x.sel && !ja(x)}" data-act="tiSel" data-i="${i}" ${ja(x) ? 'disabled' : ''}>${ic('check')}</button>
+        <span style="min-width:0"><p class="nome">${esc(x.titulo)}</p><p class="tag">${ja(x) ? 'já está na lista' : [x.secNome, x.data ? fmtData(fromKey(x.data)) + (x.hora ? ' · ' + x.hora : '') : '', x.rep !== 'nao' ? REP[x.rep] : '', x.nota].filter(Boolean).map(esc).join(' · ') || 'sem data'}</p></span></div>`).join('')}</div>
+      ${novasSec.length ? `<p class="note">Seções novas serão criadas: ${esc(novasSec.join(', '))}.</p>` : ''}
+      <div class="row-btns"><button class="btn ghost" data-act="tiVoltar">Voltar</button><button class="btn primary" data-act="tiOk" ${n ? '' : 'disabled'}>Importar ${plural(n, 'tarefa')}</button></div>`;
+  }
+  return `${guiaGPT(st, 'tarefas', 'suas tarefas: escreva do seu jeito, cole de outro app (Notas, Lembretes) ou anexe um print', 'Ver tarefas encontradas')}
+    <p class="muted sm">Ou cole uma lista, uma tarefa por linha (só o nome é obrigatório):</p>
+    <p class="note sm" style="white-space:pre-line">Dentista; 13/11/2026; 15:00; Compromissos
+Entregar trabalho; 14/11/2026; Faculdade
+Tomar vitamina; 08:00; Pessoal; todo dia</p>
+    <button class="btn ghost" data-act="tiArquivo">${ic('book')} Escolher arquivo</button>
+    <textarea class="t" id="ti-txt" data-bind="txt" rows="6" placeholder="Cole aqui suas tarefas">${esc(st.txt || '')}</textarea>
+    ${st.err ? `<p class="note warn">${esc(st.err)}</p>` : ''}
+    <button class="btn primary" data-act="tiLer">Ver tarefas encontradas</button>`;
+}
 App.hooks.avisos.push(() => D.st().itens.filter(x => !x.feito && x.data && x.hora).map(x => ({id: 'tarefa-' + x.id, titulo: x.titulo, corpo: x.nota || 'Lembrete do Meu Ritual', quando: quando(x)})));
 
 App.module({
@@ -2967,6 +3137,27 @@ App.module({
   actions: {
     tfAdd: adicionar,
     tfSec: d => { ui.tfSec = d.s; App.render(); },
+    tiAbrir: () => Sheet.open({title: 'Importar tarefas', render: importTarefas, state: {txt: ''}}),
+    tiArquivo: () => { const st = Sheet.st; escolherTexto(t => { if (Sheet.st !== st) return; st.txt = t; App.actions.tiLer(); }); },
+    tiLer: () => { const st = Sheet.st, itens = lerTarefas(st.txt);
+      if (!itens.length) { st.err = 'Não encontrei tarefas. Escreva uma por linha, por exemplo: Dentista; 13/11/2026; 15:00; Compromissos'; return Sheet.refresh(); }
+      st.err = ''; st.itens = itens; Sheet.refresh(); },
+    tiSel: d => { const x = Sheet.st.itens[+d.i]; x.sel = !x.sel; Sheet.refresh(); },
+    tiVoltar: () => { delete Sheet.st.itens; Sheet.refresh(); },
+    tiOk: () => {
+      const st = Sheet.st, s = D.st(), ja = x => s.itens.some(y => !y.feito && y.titulo.toLowerCase() === x.titulo.toLowerCase() && (y.data || '') === x.data);
+      const novas = st.itens.filter(x => x.sel && !ja(x));
+      novas.forEach(x => {
+        let sec = '';
+        if (x.secNome) {
+          let c = s.secoes.find(c => c.nome.toLowerCase() === x.secNome.toLowerCase());
+          if (!c) { c = {id: uid(), nome: x.secNome.charAt(0).toUpperCase() + x.secNome.slice(1)}; s.secoes.push(c); }
+          sec = c.id;
+        }
+        s.itens.push({id: uid(), titulo: x.titulo, nota: x.nota, data: x.data, hora: x.hora, rep: x.rep, sec, feito: false, criado: Date.now()});
+      });
+      D.save(s); Sheet.close(); toast(`${plural(novas.length, 'tarefa importada', 'tarefas importadas')}`);
+    },
     tfSecForm: d => { Sheet.st.sec = d.s; Sheet.refresh(); },
     tfSecoes: () => Sheet.open({title: 'Seções das tarefas', state: {nova: ''}, render: st => { const s = D.st();
       return `<div class="row"><input class="t" id="tf-sec-nova" data-bind="nova" value="${esc(st.nova)}" placeholder="Nova seção, ex.: Trabalho" maxlength="24"><button class="btn primary" data-act="tfSecAdd">Criar</button></div>
