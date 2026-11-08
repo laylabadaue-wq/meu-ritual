@@ -1307,14 +1307,13 @@ function viewFichas(s) {
     ${s.nota ? `<p class="note sm" style="margin-top:12px">${esc(s.nota)}</p>` : ''}</section>`;
   const cards = s.treinos.map(t => {
     const gs = T.grupos(s, t), exs = t.exercicios.map(id => T.ex(s, id)).filter(Boolean);
-    return `<article class="card treino"><div class="between" style="align-items:flex-start"><div class="grow"><h2>${esc(t.nome)}</h2>
+    return `<article class="card treino" style="cursor:pointer" data-act="fichaAbrir" data-id="${t.id}" role="button" tabindex="0" aria-label="Ver ${esc(t.nome)}"><div class="between" style="align-items:flex-start"><div class="grow"><h2>${esc(t.nome)}</h2>
       <div class="row" style="flex-wrap:wrap;margin-top:6px">${grpDots(gs) || '<span class="tag">Sem exercícios</span>'}</div></div>
-      <button class="icon-btn sm" data-act="tTrEditar" data-id="${t.id}" aria-label="Editar ${esc(t.nome)}">${ic('pencil')}</button></div>
+      <button class="icon-btn sm" data-act="fichaEditar" data-id="${t.id}" aria-label="Editar ${esc(t.nome)}">${ic('pencil')}</button></div>
       <div class="thumbs">${exs.slice(0, 5).map(exThumb).join('')}${exs.length > 5 ? `<span>+${exs.length - 5}</span>` : ''}</div>
       <div class="between"><div class="daypills">${ORDEM_SEMANA.map(d => `<span class="daypill ${t.dias.includes(d) ? 'on' : ''}">${DIA_CURTO[d]}</span>`).join('')}</div>
       <span class="tag">${plural(t.exercicios.length, 'exercício')}</span></div>
-      <div class="row-btns"><button class="btn ghost" data-act="fichaAbrir" data-id="${t.id}">${ic('list')} Ver e editar</button>
-      <button class="btn ${t.dias.includes(hoje) ? 'primary' : 'sand'}" data-act="tIniciar" data-id="${t.id}" ${t.exercicios.length ? '' : 'disabled'}>Iniciar ${ic('next')}</button></div></article>`;
+      <button class="btn ${t.dias.includes(hoje) ? 'primary' : 'sand'} block" data-act="tIniciar" data-id="${t.id}" ${t.exercicios.length ? '' : 'disabled'}>Iniciar treino ${ic('next')}</button></article>`;
   }).join('');
   return `${banner}${metas}<div class="section-t"><h2>Minhas fichas</h2><button class="btn sm primary" data-act="tTrNovo">${ic('plus')} Nova ficha</button></div>
     ${cards || `<div class="card empty"><p class="muted sm">Nenhuma ficha ainda. Crie a primeira e escolha os dias da semana.</p></div>`}`;
@@ -1325,11 +1324,23 @@ function viewFicha() {
   const s = T.st(), t = s && s.treinos.find(x => x.id === ui.fichaSel);
   if (!t) { ui.tTab = 'fichas'; return viewTreinos(); }
   const exs = t.exercicios.map(id => T.ex(s, id)).filter(Boolean), n = exs.length;
-  return `<header class="top sub"><button class="icon-btn" data-act="go" data-r="treinos" aria-label="Voltar para as fichas">${ic('back')}</button>
-    <p class="eyebrow" style="margin:0">Minha ficha</p><button class="icon-btn" data-act="tTrEditar" data-id="${t.id}" aria-label="Editar nome e dias">${ic('pencil')}</button></header>
-    <div class="stack"><div><h1 style="font-size:2.1rem">${esc(t.nome)}</h1>
-      <div class="daypills" style="margin-top:8px">${ORDEM_SEMANA.map(d => `<span class="daypill ${t.dias.includes(d) ? 'on' : ''}">${DIA_CURTO[d]}</span>`).join('')}</div>
-      <p class="sm muted" style="margin-top:6px">${plural(n, 'exercício')} · toque em um exercício para mudar séries, repetições ou descanso</p></div>
+  const topo = `<div><h1 style="font-size:2.1rem">${esc(t.nome)}</h1>
+      <div class="daypills" style="margin-top:8px">${ORDEM_SEMANA.map(d => `<span class="daypill ${t.dias.includes(d) ? 'on' : ''}">${DIA_CURTO[d]}</span>`).join('')}</div>`;
+  if (ui.fichaModo !== 'editar') { // só ver: lista limpa + iniciar
+    const min = Math.round(exs.reduce((a, e) => a + (e.unid === 'min' ? e.reps * e.series : e.series * (1 + e.descanso / 60)), 0) / 5) * 5;
+    return `<header class="top sub"><button class="icon-btn" data-act="go" data-r="treinos" aria-label="Voltar para as fichas">${ic('back')}</button>
+      <p class="eyebrow" style="margin:0">Minha ficha</p><button class="icon-btn" data-act="fichaEditar" data-id="${t.id}" aria-label="Editar ficha">${ic('pencil')}</button></header>
+      <div class="stack">${topo}<p class="sm muted" style="margin-top:6px">${plural(n, 'exercício')}${min ? ` · ~${min} min` : ''}</p></div>
+      <div class="list">${exs.map(e => `<button class="item" ${e.libId && LIB[e.libId] ? `data-act="sComo" data-k="${e.libId}"` : 'style="cursor:default"'}>
+        ${e.libId && LIB[e.libId] ? `<img class="th" src="${imgLib(e.libId)}" alt="">` : `<span class="th" style="display:grid;place-items:center">${ic(e.grupo)}</span>`}
+        <span class="grow"><h3>${esc(e.nome)}</h3><p class="sm muted">${e.series} × ${e.reps} ${UN[e.unid]}${e.descanso ? ` · ${fmtRest(e.descanso)}` : ''}</p>${e.obs ? `<p class="obs">${esc(e.obs)}</p>` : ''}</span></button>`).join('')
+        || `<div class="card empty"><p class="muted sm">Ficha vazia. Toque no lápis para adicionar exercícios.</p></div>`}</div>
+      <button class="btn primary block" data-act="tIniciar" data-id="${t.id}" ${n ? '' : 'disabled'}>Iniciar treino ${ic('next')}</button></div>`;
+  }
+  return `<header class="top sub"><button class="icon-btn" data-act="fichaVer" aria-label="Concluir edição">${ic('back')}</button>
+    <p class="eyebrow" style="margin:0">Editando ficha</p><button class="btn sm primary" data-act="fichaVer">Concluir</button></header>
+    <div class="stack">${topo}<button class="btn link sm" style="margin-top:4px" data-act="tTrEditar" data-id="${t.id}">${ic('pencil')} Mudar nome e dias</button>
+      <p class="sm muted">Toque em um exercício para mudar séries, repetições ou descanso.</p></div>
     <div class="list">${exs.map((e, i) => `<div class="item" style="cursor:default;padding-right:8px">
       <button style="all:unset;display:flex;gap:12px;align-items:center;flex:1;min-width:0;cursor:pointer" data-act="fiEdit" data-id="${e.id}" aria-label="Editar ${esc(e.nome)}">
         ${e.libId && LIB[e.libId] ? `<img class="th" src="${imgLib(e.libId)}" alt="">` : `<span class="th" style="display:grid;place-items:center">${ic(e.grupo)}</span>`}
@@ -1339,7 +1350,7 @@ function viewFicha() {
       <button class="icon-btn sm" data-act="fiTirar" data-id="${e.id}" aria-label="Tirar ${esc(e.nome)} da ficha">${ic('x')}</button></div>`).join('')
       || `<div class="card empty"><p class="muted sm">Ficha vazia. Adicione exercícios abaixo.</p></div>`}</div>
     <div class="row-btns"><button class="btn sand" data-act="fiAddLib">${ic('book')} Da biblioteca</button><button class="btn sand" data-act="fiAddManual">${ic('plus')} Exercício manual</button></div>
-    <button class="btn primary block" data-act="tIniciar" data-id="${t.id}" ${n ? '' : 'disabled'}>Iniciar treino ${ic('next')}</button></div>`;
+    <button class="btn primary block" data-act="fichaVer">${ic('check')} Concluir edição</button></div>`;
 }
 function fiPicker(st) {
   const q = semAcento((st.q || '').trim()), s = T.st(), t = s.treinos.find(x => x.id === ui.fichaSel);
@@ -1625,7 +1636,9 @@ App.module({
   id: 'treinos', nav: {route: 'treinos', label: 'Treinos', icon: 'dumbbell'},
   routes: {treinos: viewTreinos, sessao: viewSessao, exercicio: viewExercicio, ficha: viewFicha}, navAs: 'treinos', home, progresso,
   actions: {
-    fichaAbrir: d => { ui.fichaSel = d.id; App.go('ficha'); },
+    fichaAbrir: d => { ui.fichaSel = d.id; ui.fichaModo = 'ver'; App.go('ficha'); },
+    fichaEditar: d => { ui.fichaSel = d.id; ui.fichaModo = 'editar'; App.go('ficha'); window.scrollTo(0, 0); },
+    fichaVer: () => { ui.fichaModo = 'ver'; App.render(); window.scrollTo(0, 0); },
     fiEdit: d => openExForm(T.ex(T.st(), d.id)),
     fiUp: d => { const s = T.st(), a = s.treinos.find(x => x.id === ui.fichaSel).exercicios, i = +d.i; [a[i - 1], a[i]] = [a[i], a[i - 1]]; T.save(s); },
     fiDown: d => { const s = T.st(), a = s.treinos.find(x => x.id === ui.fichaSel).exercicios, i = +d.i; [a[i + 1], a[i]] = [a[i], a[i + 1]]; T.save(s); },
