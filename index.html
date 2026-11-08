@@ -400,6 +400,13 @@ textarea.t{resize:vertical;min-height:70px}
 body.has-timer #toast{bottom:calc(166px + env(safe-area-inset-bottom,0px))}
 
 .reps-in,.tile b,.ring-p span,.tring span,.sum-grid b,.cal-day .d b,.ord,.entry .date,.tmark,.cmp figcaption,h1,h2{font-variant-numeric:lining-nums tabular-nums}
+.box[aria-checked="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.tag .ic{width:14px;height:14px}
+.money{font:500 1.15rem var(--f-display);font-variant-numeric:lining-nums tabular-nums;white-space:nowrap}
+.chip-st{font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.chip-st.late{background:color-mix(in srgb,var(--danger) 14%,transparent);color:var(--danger)}
+.chip-st.soon{background:var(--warn-soft);color:var(--warn)}
+.chip-st.ok{background:var(--ok-soft);color:var(--ok)}
 .handle{touch-action:none;cursor:grab;display:grid;place-items:center;width:36px;height:44px;flex:none;color:var(--muted);border:0;background:none;padding:0}
 .handle .ic{fill:currentColor;stroke:none;width:22px;height:22px}
 [data-sort]{transition:transform .16s ease}
@@ -449,12 +456,17 @@ const fmtData = d => d.toLocaleDateString('pt-BR', {day: 'numeric', month: 'shor
 const fmtDataLonga = d => d.toLocaleDateString('pt-BR', {day: 'numeric', month: 'long', year: 'numeric'});
 const plural = (n, s, p) => `${n} ${n === 1 ? s : (p || s + 's')}`;
 const num = (v, def, min = 0) => { const n = parseInt(v, 10); return Number.isFinite(n) && n >= min ? n : def; };
+const fmtBRL = v => (v || 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+const parseValor = s => { const n = parseFloat(String(s || '').replace(/[^\d,.-]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.')); return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null; };
+const diasAte = k => Math.round((fromKey(k) - fromKey(dkey())) / 864e5);
 
 const P = {
   home:'<path d="M3.5 10.5 12 3.5l8.5 7V20a.8.8 0 0 1-.8.8H15v-6H9v6H4.3a.8.8 0 0 1-.8-.8z"/>',
   dumbbell:'<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/>',
   leaf:'<path d="M5 19.5C5 11 10 5 20 4.5c0 10-5.5 15-14 15"/><path d="M5 19.5 13.5 11"/>',
   drop:'<path d="M12 2.8s6.5 6.6 6.5 11.7a6.5 6.5 0 0 1-13 0C5.5 9.4 12 2.8 12 2.8z"/><path d="M9 15a3 3 0 0 0 3 3"/>',
+  wallet:'<rect x="3.5" y="6" width="17" height="13" rx="2.5"/><path d="M16 12.5h4.5M6.5 6l9-2.5 1 2.5"/><circle cx="16.5" cy="12.5" r=".6"/>',
+  bell:'<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   hair:'<path d="M6 21c-1-6 0-11 2-14s6-4 8-2c3 3 2 9 2 16"/><path d="M10 21c-.5-5 .5-9 3-11M14 21c0-3 .5-6 2-8"/>',
   bag:'<path d="M5 8h14l-1 12.5H6z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>',
   heart:'<path d="M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z"/>',
@@ -740,6 +752,48 @@ const Wake = {
   off() { try { this.l && this.l.release(); } catch (e) {} this.l = null; }
 };
 
+/* ---------- Lembretes ----------
+   1) Calendário do iPhone: um arquivo .ics com alerta. Toca no horário mesmo com o app fechado.
+   2) Aviso no app: enquanto o app estiver aberto, avisa na tela (e como notificação, se permitida).
+   ponytail: sem servidor de push não há notificação com o app fechado; o .ics cobre isso. */
+const icsTxt = s => String(s || '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/([,;])/g, '\\$1');
+const icsData = d => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+function lembreteCalendario({id, titulo, nota, quando, antesMin = 0}) {
+  const fim = new Date(quando.getTime() + 15 * 60000), agora = new Date();
+  const txt = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Meu Ritual//PT-BR', 'CALSCALE:GREGORIAN', 'BEGIN:VEVENT',
+    `UID:${id}@meu-ritual`, `DTSTAMP:${icsData(agora)}`, `DTSTART:${icsData(quando)}`, `DTEND:${icsData(fim)}`,
+    `SUMMARY:${icsTxt(titulo)}`, nota ? `DESCRIPTION:${icsTxt(nota)}` : '',
+    'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${icsTxt(titulo)}`, `TRIGGER:-PT${antesMin}M`, 'END:VALARM',
+    'END:VEVENT', 'END:VCALENDAR'].filter(Boolean).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([txt], {type: 'text/calendar;charset=utf-8'}));
+  a.download = 'lembrete.ics';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  toast('Abra o arquivo e toque em "Adicionar" para salvar no Calendário');
+}
+const podeArquivo = () => Store.mode === 'local';
+const Avisos = {
+  chave: 'meu-ritual:avisados',
+  feitos() { try { return new Set(JSON.parse(localStorage.getItem(this.chave) || '[]')); } catch (e) { return new Set(); } },
+  checar() {
+    const agora = Date.now(), ja = this.feitos(); let mudou = false;
+    App.hooks.avisos.flatMap(f => f()).forEach(a => {
+      const t = a.quando.getTime(), k = a.id + '@' + t;
+      if (t > agora || t < agora - 12 * 3600e3 || ja.has(k)) return;
+      ja.add(k); mudou = true;
+      toast(`${a.titulo}${a.corpo ? ' · ' + a.corpo : ''}`); buzz([200, 100, 200]); Sound.chime();
+      try {
+        if (window.Notification && Notification.permission === 'granted' && navigator.serviceWorker)
+          navigator.serviceWorker.ready.then(r => r.showNotification(a.titulo, {body: a.corpo || '', icon: 'icon-192.png', tag: k})).catch(() => {});
+      } catch (e) {}
+    });
+    if (mudou) try { localStorage.setItem(this.chave, JSON.stringify([...ja].slice(-300))); } catch (e) {}
+  }
+};
+setInterval(() => Avisos.checar(), 30000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') Avisos.checar(); });
+
 /* ---------- Cronômetro de descanso: grande dentro do treino, compacto nas outras telas ---------- */
 const Timer = {
   on: false, done: false, paused: false, total: 0, left: 0, endsAt: 0, label: '', iv: 0, hideT: 0,
@@ -843,7 +897,7 @@ const Sheet = {
 const App = {
   mods: [], routes: {}, actions: {}, ui: {}, last: '', raf: 0,
   areas: {beleza: {label: 'Beleza', icon: 'leaf', eyebrow: 'Pele, cabelo e produtos'}},
-  hooks: {usos: [], removerProduto: [], migrar: [], semear: []},
+  hooks: {usos: [], removerProduto: [], migrar: [], semear: [], avisos: []},
   /* primeira abertura: carrega suas rotinas. Só com resposta definitiva do armazenamento,
      para nunca sobrescrever dados da conta que ainda não chegaram. */
   semear() {
@@ -1011,7 +1065,8 @@ function viewHome() {
     <div class="stack">${App.mods.map(m => m.home ? m.home() : '').join('')}
     ${prog.length ? `<section class="card"><h3>Seu progresso da semana</h3><div class="rings">
       ${prog.map(x => `<div class="rg">${ring(x.pct, 74, 4, x.valor)}<span>${x.label}</span></div>`).join('')}
-      <div class="rg">${ring(media, 74, 4, media + '%')}<span>Consistência</span></div></div></section>` : ''}</div>
+      <div class="rg">${ring(media, 74, 4, media + '%')}<span>Consistência</span></div></div></section>` : ''}
+    ${App.mods.map(m => m.homeFim ? m.homeFim() : '').join('')}</div>
     <p class="sync" id="sync"></p>`;
 }
 const loadingCard = () => `<div class="skel" aria-label="Carregando"></div>`;
@@ -1045,6 +1100,9 @@ function openAjustes() {
     <div class="f"><span>Aparência</span><div class="seg" role="group" aria-label="Aparência">${[['auto', 'Automático', 'sliders'], ['claro', 'Claro', 'sun'], ['escuro', 'Escuro', 'moon']]
       .map(([k, l, i]) => `<button aria-pressed="${((Store.get('perfil') || {}).tema || 'auto') === k}" data-act="ajTema" data-t="${k}">${ic(i)} ${l}</button>`).join('')}</div>
       <p class="muted sm" style="font-weight:400">Automático segue o tema do seu celular.</p></div>
+    ${window.Notification && podeArquivo() ? `<div class="f"><span>Avisos de tarefas e contas</span>
+      <p class="muted sm" style="font-weight:400">${Notification.permission === 'granted' ? 'Ativados: o app avisa no horário enquanto estiver aberto.' : 'Permita para o app avisar no horário enquanto estiver aberto.'} Para tocar mesmo com o app fechado, use "Lembrar no iPhone" em cada tarefa ou conta.</p>
+      ${Notification.permission === 'granted' ? '' : `<button class="btn ghost" data-act="ajNotif">${ic('bell')} Ativar avisos</button>`}</div>` : ''}
     <label class="f">Seu nome (opcional)<input class="t" id="aj-nome" data-bind="nome" value="${esc(st.nome)}" maxlength="30" autocomplete="given-name"></label>
     <button class="btn primary" data-act="ajSalvar">Salvar nome</button>
     <p class="note">${Store.mode === 'cloud'
@@ -1060,6 +1118,7 @@ function openAjustes() {
     <button class="btn danger" data-act="ajApagar">Apagar todos os dados</button>`});
 }
 Object.assign(App.actions, {
+  ajNotif: async () => { try { const r = await Notification.requestPermission(); toast(r === 'granted' ? 'Avisos ativados' : 'Avisos não permitidos — dá para mudar nos Ajustes do iPhone'); } catch (e) { toast('Este aparelho não permite avisos aqui'); } Sheet.refresh(); },
   ajTema: d => { const p = Store.get('perfil') || {}; p.tema = d.t; Store.put('perfil', p); aplicarTema(); Sheet.refresh(); },
   temaRapido: () => {
     const escuro = document.documentElement.getAttribute('data-theme') === 'dark' || (!document.documentElement.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches);
@@ -2272,8 +2331,7 @@ App.module({
    ===================================================================== */
 (() => {
 const D = {st: () => Store.get('desejos') || {v: 1, itens: []}, save: s => Store.put('desejos', s)};
-const fmtPreco = v => v ? v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) : '';
-const parsePreco = s => { const n = parseFloat(String(s || '').replace(/[^\d,.-]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.')); return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null; };
+const fmtPreco = v => v ? fmtBRL(v) : '', parsePreco = parseValor;
 const linkOk = s => { try { const u = new URL(s); return /^https?:$/.test(u.protocol) ? u.href : ''; } catch (e) { return ''; } };
 const host = s => { try { return new URL(s).hostname.replace(/^www\./, ''); } catch (e) { return ''; } };
 
@@ -2340,6 +2398,196 @@ App.module({
       if (dup) { marcar(); Sheet.close(); toast('Já estava na coleção — marquei como comprado'); return; }
       abrirProduto({nome: x.nome, marca: x.marca, tipo: x.tipo, foto: x.foto, obs: x.obs}, {title: 'Adicionar à coleção', okLabel: 'Adicionar à coleção', onSave: () => { marcar(); toast('Produto adicionado à coleção'); }});
     }
+  }
+});
+})();
+
+/* =====================================================================
+   MÓDULO CONTAS (financeiro)
+   doc "financas": {contas:[{id,serie,nome,valor,venc:'AAAA-MM-DD',cat,recorrente,pago,pagoEm,obs}]}
+   Conta que repete todo mês: ao marcar como paga, a do mês seguinte é criada sozinha.
+   ===================================================================== */
+(() => {
+const ui = App.ui;
+ui.cMes = ui.cMes || 0;
+const CAT = {moradia: 'Moradia', casa: 'Água, luz e gás', internet: 'Internet e celular', cartao: 'Cartão de crédito', assinaturas: 'Assinaturas',
+  saude: 'Saúde', educacao: 'Educação', transporte: 'Transporte', impostos: 'Impostos e taxas', outros: 'Outros'};
+const F = {st: () => Store.get('financas') || {v: 1, contas: []}, save: s => Store.put('financas', s)};
+const proxMes = k => { const d = fromKey(k), dia = d.getDate(), n = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  n.setDate(Math.min(dia, new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate())); return dkey(n); };
+function status(c) {
+  if (c.pago) return ['ok', `Paga${c.pagoEm ? ' em ' + fmtData(new Date(c.pagoEm)) : ''}`];
+  const n = diasAte(c.venc);
+  if (n < 0) return ['late', `Vencida há ${plural(-n, 'dia')}`];
+  if (n === 0) return ['late', 'Vence hoje'];
+  if (n === 1) return ['soon', 'Vence amanhã'];
+  if (n <= 5) return ['soon', `Vence em ${n} dias`];
+  return ['', `Vence ${fmtData(fromKey(c.venc))}`];
+}
+const abertas = s => s.contas.filter(c => !c.pago).sort((a, b) => a.venc.localeCompare(b.venc));
+
+function home() {
+  const s = F.st(), ab = abertas(s);
+  if (!s.contas.length) return `<button class="item" data-act="go" data-r="contas">${ic('wallet')}<span class="grow"><p class="eyebrow" style="margin:0">Contas</p><h3>Cadastre suas contas e acompanhe os vencimentos</h3></span>${ic('next')}</button>`;
+  if (!ab.length) return `<button class="item" data-act="go" data-r="contas">${ic('wallet')}<span class="grow"><p class="eyebrow" style="margin:0">Contas</p><h3>Tudo pago por enquanto</h3></span>${ic('next')}</button>`;
+  const c = ab[0], [cls, txt] = status(c), atrasadas = ab.filter(x => diasAte(x.venc) < 0).length;
+  return `<button class="item" data-act="go" data-r="contas" style="align-items:flex-start">${ic('wallet')}<span class="grow"><p class="eyebrow" style="margin:0">Próxima conta</p>
+    <div class="between"><h3>${esc(c.nome)}</h3><span class="money">${fmtBRL(c.valor)}</span></div>
+    <p class="row" style="gap:8px;margin-top:4px;flex-wrap:wrap"><span class="chip-st ${cls}">${txt}</span><span class="sm muted">${fmtData(fromKey(c.venc))}</span>${atrasadas > (diasAte(c.venc) < 0 ? 1 : 0) ? `<span class="chip-st late">${plural(atrasadas, 'vencida')}</span>` : ''}</p></span></button>`;
+}
+
+function viewContas() {
+  const s = F.st(), ref = new Date(); ref.setDate(1); ref.setMonth(ref.getMonth() + ui.cMes);
+  const mk = `${ref.getFullYear()}-${pad(ref.getMonth() + 1)}`, doMes = s.contas.filter(c => c.venc.startsWith(mk)).sort((a, b) => (a.pago - b.pago) || a.venc.localeCompare(b.venc));
+  const total = doMes.reduce((a, c) => a + (c.valor || 0), 0), pago = doMes.filter(c => c.pago).reduce((a, c) => a + (c.valor || 0), 0);
+  const vencidas = abertas(s).filter(c => diasAte(c.venc) < 0 && !c.venc.startsWith(mk));
+  const nomeMes = ref.toLocaleDateString('pt-BR', {month: 'long', year: 'numeric'});
+  return `<header class="top"><div><p class="eyebrow">Financeiro</p><h1>Contas</h1></div><button class="btn sm primary" data-act="cNova">${ic('plus')} Conta</button></header>
+    <div class="stack"><section class="card"><div class="cal-nav"><button class="icon-btn sm" data-act="cMes" data-d="-1" aria-label="Mês anterior">${ic('back')}</button>
+      <h3 style="text-transform:capitalize">${nomeMes}</h3><button class="icon-btn sm" data-act="cMes" data-d="1" aria-label="Próximo mês">${ic('next')}</button></div>
+      <div class="sum-grid" style="margin-top:14px"><div><b style="font-size:1.25rem">${fmtBRL(total)}</b><span>total do mês</span></div><div><b style="font-size:1.25rem;color:var(--ok)">${fmtBRL(pago)}</b><span>pago</span></div><div><b style="font-size:1.25rem">${fmtBRL(total - pago)}</b><span>a pagar</span></div></div>
+      ${total ? `<div class="bar" style="margin-top:12px"><i style="width:${Math.round(pago * 100 / total)}%"></i></div>` : ''}</section>
+    ${vencidas.length ? `<button class="note warn" style="border:0;text-align:left;cursor:pointer;font:inherit" data-act="cIrVencida">${plural(vencidas.length, 'conta vencida', 'contas vencidas')} de outros meses · toque para ver</button>` : ''}
+    ${doMes.length ? `<section class="card" style="padding-block:6px"><div class="steps">${doMes.map(c => { const [cls, txt] = status(c);
+      return `<div class="step" style="grid-template-columns:auto 1fr auto;cursor:default"><button class="box" role="checkbox" aria-checked="${c.pago}" aria-label="Marcar ${esc(c.nome)} como paga" data-act="cPagar" data-id="${c.id}">${ic('check')}</button>
+        <button style="all:unset;cursor:pointer;min-width:0" data-act="cEditar" data-id="${c.id}"><p class="nome" style="${c.pago ? 'color:var(--muted)' : ''}">${esc(c.nome)}</p>
+        <p class="row" style="gap:6px;margin-top:3px;flex-wrap:wrap"><span class="chip-st ${cls}">${txt}</span><span class="tag">${CAT[c.cat] || 'Outros'}${c.recorrente ? ' · todo mês' : ''}</span></p></button>
+        <span class="money" style="${c.pago ? 'color:var(--muted)' : ''}">${fmtBRL(c.valor)}</span></div>`; }).join('')}</div></section>`
+      : `<div class="card empty">${ic('wallet')}<h2>Nenhuma conta em ${ref.toLocaleDateString('pt-BR', {month: 'long'})}</h2><p class="muted sm">Cadastre aluguel, cartão, luz, internet… Contas que se repetem todo mês aparecem sozinhas no mês seguinte quando você marcar como paga.</p></div>`}
+    </div>`;
+}
+function form(st) {
+  return `<label class="f">Nome da conta<input class="t" id="cf-nome" data-bind="nome" value="${esc(st.nome)}" placeholder="Ex.: Cartão Nubank, Luz, Aluguel" maxlength="50"></label>
+    <div class="grid2"><label class="f">Valor<input class="t" id="cf-valor" data-bind="valor" inputmode="decimal" value="${esc(st.valor)}" placeholder="R$ 0,00"></label>
+      <label class="f">Vencimento<input class="t" id="cf-venc" type="date" data-bind="venc" value="${esc(st.venc)}"></label></div>
+    <div class="f"><span>Categoria</span><div class="chips wrap">${Object.entries(CAT).map(([k, l]) => `<button class="chip" aria-pressed="${st.cat === k}" data-act="cfCat" data-c="${k}">${l}</button>`).join('')}</div></div>
+    <button class="pick" role="checkbox" aria-checked="${st.recorrente}" data-act="cfRec"><span class="box sq">${ic('check')}</span>Repete todo mês</button>
+    <label class="f">Observações<textarea class="t" id="cf-obs" data-bind="obs" rows="2" placeholder="Código de barras, forma de pagamento…">${esc(st.obs)}</textarea></label>
+    ${st.err ? `<p class="note warn">${esc(st.err)}</p>` : ''}
+    ${podeArquivo() && st.id ? `<button class="btn ghost" data-act="cLembrar">${ic('bell')} Lembrar no iPhone (1 dia antes, 9h)</button>` : ''}
+    <div class="row-btns">${st.id ? `<button class="btn danger" data-act="cExcluir">Excluir</button>` : ''}<button class="btn primary" data-act="cSalvar">Salvar conta</button></div>`;
+}
+App.hooks.avisos.push(() => abertas(F.st()).map(c => { const d = fromKey(c.venc); d.setHours(9, 0, 0, 0); return {id: 'conta-' + c.id, titulo: `Vence hoje: ${c.nome}`, corpo: fmtBRL(c.valor), quando: d}; }));
+
+App.module({
+  id: 'financas', nav: {route: 'contas', label: 'Contas', icon: 'wallet'},
+  routes: {contas: viewContas}, home,
+  actions: {
+    cMes: d => { ui.cMes += +d.d; App.render(); },
+    cIrVencida: () => { const v = abertas(F.st()).find(c => diasAte(c.venc) < 0); if (!v) return; const d = fromKey(v.venc), n = new Date(); ui.cMes = (d.getFullYear() - n.getFullYear()) * 12 + d.getMonth() - n.getMonth(); App.render(); },
+    cNova: () => Sheet.open({title: 'Nova conta', render: form, state: {nome: '', valor: '', venc: dkey(), cat: 'outros', recorrente: true, obs: ''}}),
+    cEditar: d => { const c = F.st().contas.find(x => x.id === d.id); Sheet.open({title: 'Editar conta', render: form, state: {...clone(c), valor: String(c.valor || '').replace('.', ',')}}); },
+    cfCat: d => { Sheet.st.cat = d.c; Sheet.refresh(); },
+    cfRec: () => { Sheet.st.recorrente = !Sheet.st.recorrente; Sheet.refresh(); },
+    cSalvar: () => {
+      const st = Sheet.st, s = F.st(), nome = (st.nome || '').trim(), valor = parseValor(st.valor);
+      if (!nome) { st.err = 'Dê um nome à conta.'; return Sheet.refresh(); }
+      if (!valor) { st.err = 'Informe o valor (ex.: 189,90).'; return Sheet.refresh(); }
+      if (!st.venc) { st.err = 'Escolha a data de vencimento.'; return Sheet.refresh(); }
+      const c = {id: st.id || uid(), serie: st.serie || uid(), nome, valor, venc: st.venc, cat: st.cat, recorrente: !!st.recorrente, pago: !!st.pago, pagoEm: st.pagoEm || null, obs: (st.obs || '').trim()};
+      const i = s.contas.findIndex(x => x.id === c.id);
+      if (i >= 0) s.contas[i] = c; else s.contas.push(c);
+      F.save(s); Sheet.close();
+      const n = new Date(), v = fromKey(c.venc); ui.cMes = (v.getFullYear() - n.getFullYear()) * 12 + v.getMonth() - n.getMonth();
+      App.render(); toast(i >= 0 ? 'Conta atualizada' : 'Conta cadastrada');
+    },
+    cPagar: d => {
+      const s = F.st(), c = s.contas.find(x => x.id === d.id);
+      c.pago = !c.pago; c.pagoEm = c.pago ? Date.now() : null;
+      if (c.pago) { buzz(15);
+        if (c.recorrente) { const venc = proxMes(c.venc);
+          if (!s.contas.some(x => x.serie === c.serie && x.venc === venc)) { s.contas.push({...clone(c), id: uid(), venc, pago: false, pagoEm: null}); toast(`Paga! A de ${fromKey(venc).toLocaleDateString('pt-BR', {month: 'long'})} já está na lista`); }
+          else toast('Conta paga'); }
+        else toast('Conta paga');
+      }
+      F.save(s);
+    },
+    cLembrar: () => { const st = Sheet.st, d = fromKey(st.venc); d.setHours(9, 0, 0, 0); d.setDate(d.getDate() - 1);
+      lembreteCalendario({id: 'conta-' + st.id + '-' + st.venc, titulo: `Conta: ${st.nome} vence amanhã`, nota: `${fmtBRL(parseValor(st.valor))} · vencimento ${fmtData(fromKey(st.venc))}`, quando: d}); },
+    cExcluir: () => { const id = Sheet.st.id, c = F.st().contas.find(x => x.id === id);
+      Sheet.confirm({title: 'Excluir conta?', text: `"${c.nome}" de ${fmtData(fromKey(c.venc))} será apagada. As dos outros meses continuam.`, ok: 'Excluir', danger: true,
+        onOk: () => { const s = F.st(); s.contas = s.contas.filter(x => x.id !== id); F.save(s); toast('Conta excluída'); }}); }
+  }
+});
+})();
+
+/* =====================================================================
+   MÓDULO TAREFAS (estilo Lembretes, no fim da tela inicial)
+   doc "tarefas": {itens:[{id,titulo,nota,data,hora,rep,feito,feitoEm,criado}]}
+   ===================================================================== */
+(() => {
+const ui = App.ui;
+const D = {st: () => Store.get('tarefas') || {v: 1, itens: []}, save: s => Store.put('tarefas', s)};
+const REP = {nao: 'Não repete', diario: 'Todo dia', semanal: 'Toda semana', mensal: 'Todo mês'};
+const quando = x => { if (!x.data) return null; const [h, m] = (x.hora || '09:00').split(':').map(Number); const d = fromKey(x.data); d.setHours(h, m, 0, 0); return d; };
+const atrasada = x => !x.feito && x.data && (x.hora ? quando(x) < new Date() : x.data < dkey());
+const ordem = (a, b) => (a.data || '9999').localeCompare(b.data || '9999') || (a.hora || '99').localeCompare(b.hora || '99') || a.criado - b.criado;
+function rotulo(x) {
+  if (!x.data) return '';
+  const am = new Date(); am.setDate(am.getDate() + 1); const d = fromKey(x.data);
+  return (x.data === dkey() ? 'Hoje' : x.data === dkey(am) ? 'Amanhã' : `${DIA_CURTO[d.getDay()]}, ${fmtData(d)}`) + (x.hora ? ` · ${x.hora}` : '');
+}
+function linha(x) {
+  const r = rotulo(x), extra = [r ? ic('clock') + ' ' + r : '', x.rep && x.rep !== 'nao' ? REP[x.rep] : '', x.nota ? esc(x.nota) : ''].filter(Boolean).join(' · ');
+  return `<div class="step" style="grid-template-columns:auto 1fr;cursor:default"><button class="box" role="checkbox" aria-checked="${x.feito}" aria-label="Concluir ${esc(x.titulo)}" data-act="tfCheck" data-id="${x.id}">${ic('check')}</button>
+    <button style="all:unset;cursor:pointer;min-width:0" data-act="tfEdit" data-id="${x.id}"><p class="nome" style="${x.feito ? 'text-decoration:line-through;color:var(--muted)' : ''}">${esc(x.titulo)}</p>
+    ${extra ? `<p class="tag" style="${atrasada(x) ? 'color:var(--danger)' : ''}">${extra}</p>` : ''}</button></div>`;
+}
+function homeFim() {
+  const s = D.st(), pend = s.itens.filter(x => !x.feito).sort(ordem), feitos = s.itens.filter(x => x.feito).sort((a, b) => (b.feitoEm || 0) - (a.feitoEm || 0));
+  return `<section class="card" id="tarefas"><div class="between"><h3>Minhas tarefas</h3><span class="tag">${pend.length ? plural(pend.length, 'pendente') : 'tudo feito'}</span></div>
+    <div class="row" style="margin-top:10px"><input class="t" id="tf-nova" placeholder="Nova tarefa" maxlength="120" enterkeyhint="done" autocomplete="off">
+      <button class="icon-btn" style="box-shadow:none;background:var(--accent);color:var(--on-accent)" data-act="tfAdd" aria-label="Adicionar tarefa">${ic('plus')}</button></div>
+    ${pend.length ? `<div class="steps" style="margin-top:4px">${pend.map(linha).join('')}</div>` : `<p class="sm muted" style="margin-top:10px">Nenhuma tarefa pendente.</p>`}
+    ${feitos.length ? `<button class="btn link sm" data-act="tfVerFeitos">${ui.tfFeitos ? 'Ocultar' : 'Mostrar'} concluídas (${feitos.length})</button>
+      ${ui.tfFeitos ? `<div class="steps">${feitos.map(linha).join('')}</div><button class="btn link sm" style="color:var(--danger)" data-act="tfLimpar">Apagar concluídas</button>` : ''}` : ''}</section>`;
+}
+function form(st) {
+  return `<label class="f">Tarefa<input class="t" id="tf-titulo" data-bind="titulo" value="${esc(st.titulo)}" maxlength="120"></label>
+    <label class="f">Notas<textarea class="t" id="tf-nota" data-bind="nota" rows="2">${esc(st.nota)}</textarea></label>
+    <div class="grid2"><label class="f">Data<input class="t" id="tf-data" type="date" data-bind="data" value="${esc(st.data)}"></label>
+      <label class="f">Horário<input class="t" id="tf-hora" type="time" data-bind="hora" value="${esc(st.hora)}"></label></div>
+    <div class="f"><span>Repetir</span><div class="chips wrap">${Object.entries(REP).map(([k, l]) => `<button class="chip" aria-pressed="${st.rep === k}" data-act="tfRep" data-r="${k}">${l}</button>`).join('')}</div></div>
+    ${st.err ? `<p class="note warn">${esc(st.err)}</p>` : ''}
+    ${podeArquivo() ? `<button class="btn ghost" data-act="tfLembrar">${ic('bell')} Lembrar no iPhone</button>` : ''}
+    <div class="row-btns">${st.id ? `<button class="btn danger" data-act="tfExcluir">Excluir</button>` : ''}<button class="btn primary" data-act="tfSalvar">Salvar</button></div>`;
+}
+function proxima(x) {
+  if (!x.data || !x.rep || x.rep === 'nao') return null;
+  const d = fromKey(x.data);
+  if (x.rep === 'diario') d.setDate(d.getDate() + 1); else if (x.rep === 'semanal') d.setDate(d.getDate() + 7);
+  else return {...x, id: uid(), data: proxMesT(x.data), feito: false, feitoEm: null, criado: Date.now()};
+  return {...x, id: uid(), data: dkey(d), feito: false, feitoEm: null, criado: Date.now()};
+}
+const proxMesT = k => { const d = fromKey(k), dia = d.getDate(), n = new Date(d.getFullYear(), d.getMonth() + 1, 1); n.setDate(Math.min(dia, new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate())); return dkey(n); };
+const adicionar = () => {
+  const el = $('#tf-nova'), t = el && el.value.trim(); if (!t) return el && el.focus();
+  const s = D.st(); s.itens.push({id: uid(), titulo: t, nota: '', data: '', hora: '', rep: 'nao', feito: false, criado: Date.now()}); D.save(s);
+  setTimeout(() => { const n = $('#tf-nova'); if (n) n.focus(); }, 30);
+};
+document.addEventListener('keydown', e => { if (e.target.id === 'tf-nova' && e.key === 'Enter') { e.preventDefault(); adicionar(); } });
+App.hooks.avisos.push(() => D.st().itens.filter(x => !x.feito && x.data && x.hora).map(x => ({id: 'tarefa-' + x.id, titulo: x.titulo, corpo: x.nota || 'Lembrete do Meu Ritual', quando: quando(x)})));
+
+App.module({
+  id: 'tarefas', homeFim,
+  actions: {
+    tfAdd: adicionar,
+    tfVerFeitos: () => { ui.tfFeitos = !ui.tfFeitos; App.render(); },
+    tfCheck: d => { const s = D.st(), x = s.itens.find(y => y.id === d.id); x.feito = !x.feito; x.feitoEm = x.feito ? Date.now() : null;
+      if (x.feito) { buzz(12); const n = proxima(x); if (n && !s.itens.some(y => !y.feito && y.titulo === n.titulo && y.data === n.data)) s.itens.push(n); }
+      D.save(s); },
+    tfEdit: d => { const x = D.st().itens.find(y => y.id === d.id); Sheet.open({title: 'Tarefa', render: form, state: clone(x)}); },
+    tfRep: d => { Sheet.st.rep = d.r; Sheet.refresh(); },
+    tfSalvar: () => { const st = Sheet.st, s = D.st(), titulo = (st.titulo || '').trim();
+      if (!titulo) { st.err = 'Escreva a tarefa.'; return Sheet.refresh(); }
+      if (st.rep !== 'nao' && !st.data) { st.err = 'Para repetir, escolha uma data.'; return Sheet.refresh(); }
+      const i = s.itens.findIndex(y => y.id === st.id);
+      s.itens[i] = {...s.itens[i], titulo, nota: (st.nota || '').trim(), data: st.data || '', hora: st.data ? st.hora || '' : '', rep: st.rep || 'nao'};
+      D.save(s); Sheet.close(); toast('Tarefa salva'); },
+    tfLembrar: () => { const st = Sheet.st; if (!st.data) { st.err = 'Escolha a data (e o horário) para criar o lembrete.'; return Sheet.refresh(); }
+      lembreteCalendario({id: 'tarefa-' + st.id + '-' + st.data, titulo: (st.titulo || '').trim() || 'Tarefa', nota: st.nota, quando: quando(st)}); },
+    tfExcluir: () => { const id = Sheet.st.id; const s = D.st(); s.itens = s.itens.filter(y => y.id !== id); D.save(s); Sheet.close(); toast('Tarefa excluída'); },
+    tfLimpar: () => Sheet.confirm({title: 'Apagar concluídas?', text: 'As tarefas já concluídas serão apagadas.', ok: 'Apagar', danger: true, onOk: () => { const s = D.st(); s.itens = s.itens.filter(y => !y.feito); D.save(s); }})
   }
 });
 })();
