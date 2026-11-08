@@ -395,7 +395,7 @@ textarea.t{resize:vertical;min-height:70px}
 .pick small{margin-left:auto;color:var(--muted)}
 .pick .pimg{width:40px;height:40px;border-radius:10px}
 .sum-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.sum-grid div{background:var(--surface-2);border-radius:16px;padding:12px;display:grid;gap:2px;text-align:center}
+.sum-grid div{min-width:0;overflow-wrap:anywhere;background:var(--surface-2);border-radius:16px;padding:12px 6px;display:grid;gap:2px;text-align:center}
 .sum-grid b{font:500 1.7rem/1 var(--f-display);font-variant-numeric:tabular-nums}
 .sum-grid span{font-size:.74rem;color:var(--muted)}
 
@@ -530,7 +530,7 @@ const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e)
    "cabelo", "cabelo-evo-<id>", "perfil"). Na conta: data/users/<id>/<doc> (privado).
    Espelhado no navegador: abre na hora e funciona sem conexão. */
 const CACHE = 'meu-ritual:v1';
-const APP_VERSAO = '13'; // o montar_site.py troca pelo número da versão do site
+const APP_VERSAO = '14'; // o montar_site.py troca pelo número da versão do site
 /* IndexedDB: guarda tudo no aparelho com bem mais espaço que o localStorage (fotos incluídas) */
 const IDB = {
   db: null,
@@ -2680,7 +2680,7 @@ function viewContas() {
   return `<header class="top"><div><p class="eyebrow">Financeiro</p><h1>Contas</h1></div><div class="row" style="gap:6px"><button class="btn sm ghost" data-act="cImportar">Importar</button><button class="btn sm primary" data-act="cNova">${ic('plus')} Conta</button></div></header>
     <div class="stack"><section class="card"><div class="cal-nav"><button class="icon-btn sm" data-act="cMes" data-d="-1" aria-label="Mês anterior">${ic('back')}</button>
       <h3 style="text-transform:capitalize">${nomeMes}</h3><button class="icon-btn sm" data-act="cMes" data-d="1" aria-label="Próximo mês">${ic('next')}</button></div>
-      <div class="sum-grid" style="margin-top:14px"><div><b style="font-size:1.25rem">${fmtBRL(total)}</b><span>total do mês</span></div><div><b style="font-size:1.25rem;color:var(--ok)">${fmtBRL(pago)}</b><span>pago</span></div><div><b style="font-size:1.25rem">${fmtBRL(total - pago)}</b><span>a pagar</span></div></div>
+      <div class="sum-grid" style="margin-top:14px"><div><b style="font-size:1.02rem">${fmtBRL(total)}</b><span>total do mês</span></div><div><b style="font-size:1.02rem;color:var(--ok)">${fmtBRL(pago)}</b><span>pago</span></div><div><b style="font-size:1.02rem">${fmtBRL(total - pago)}</b><span>a pagar</span></div></div>
       ${total ? `<div class="bar" style="margin-top:12px"><i style="width:${Math.round(pago * 100 / total)}%"></i></div>` : ''}</section>
     ${vencidas.length ? `<button class="note warn" style="border:0;text-align:left;cursor:pointer;font:inherit" data-act="cIrVencida">${plural(vencidas.length, 'conta vencida', 'contas vencidas')} de outros meses · toque para ver</button>` : ''}
     ${doMes.length ? `<section class="card" style="padding-block:6px"><div class="steps">${doMes.map(c => { const [cls, txt] = status(c);
@@ -2736,6 +2736,29 @@ function lerContas(txt) {
   });
   return out;
 }
+const PROMPT_CONTAS = `Organize minhas contas em uma lista para eu importar num app. Responda SÓ com as linhas, sem título, explicação, numeração ou bloco de código.
+
+Formato de cada linha (uma conta por linha):
+Nome; valor; dd/mm/aaaa; marcações // observação
+
+Regras:
+- Valor com vírgula nos centavos, ex.: 1.250,00. Sem "R$".
+- Data = data de vencimento no formato dd/mm/aaaa. Se só souber o dia, use o mês atual.
+- Marcações (opcionais, separadas por ponto e vírgula):
+  paga → já paguei esta
+  variável → o valor muda todo mês (cartão, luz). Se não souber o valor deste mês, escreva variável no lugar do valor.
+  única → não se repete todo mês (parcela final, compra avulsa)
+- Observação é opcional, depois de //. Use para rateio, forma de pagamento etc.
+- Uma linha por mês: se eu mandar meses diferentes, repita a conta com cada data.
+
+Exemplos:
+Aluguel; 2.000,00; 20/11/2026
+Luz; 189,90; 10/11/2026; variável; paga
+Cartão de crédito; variável; 06/12/2026
+Curso de inglês; 350,00; 15/11/2026; única // última parcela
+
+Minhas contas:
+`;
 function importForm(st) {
   if (st.itens) {
     const s = F.st(), ja = x => s.contas.some(c => c.nome.toLowerCase() === x.nome.toLowerCase() && c.venc === x.venc);
@@ -2748,7 +2771,15 @@ function importForm(st) {
       ${st.itens.some(x => x.semData) ? `<p class="note warn">Linhas sem data ficaram com vencimento hoje. Ajuste depois tocando na conta.</p>` : ''}
       <div class="row-btns"><button class="btn ghost" data-act="ciVoltar">Voltar</button><button class="btn primary" data-act="ciOk" ${n ? '' : 'disabled'}>Importar ${plural(n, 'conta')}</button></div>`;
   }
-  return `<p class="muted sm">No seu app de finanças, procure <b>Exportar</b> (CSV ou planilha) e escolha o arquivo aqui. Ou cole uma lista, uma conta por linha:</p>
+  const guia = st.guia ? `<section class="card soft" style="display:grid;gap:10px"><h3>Gerar a lista com o ChatGPT</h3>
+      <ol class="sm" style="margin:0;padding-left:18px;display:grid;gap:6px">
+        <li>Toque em <b>Copiar prompt</b>.</li>
+        <li>Abra o ChatGPT, cole o prompt e, no final, coloque suas contas: anexe um <b>print</b> do app do banco, uma <b>planilha</b> ou escreva do seu jeito.</li>
+        <li>Copie a resposta do ChatGPT (só as linhas), volte aqui, cole no campo abaixo e toque em <b>Ver contas encontradas</b>.</li></ol>
+      <textarea class="t" id="ci-prompt" rows="7" readonly style="font-size:.8rem">${esc(PROMPT_CONTAS)}</textarea>
+      <button class="btn primary" data-act="ciCopiarPrompt">${ic('copy')} Copiar prompt</button></section>` : '';
+  return `<button class="btn ${st.guia ? 'sand' : 'ghost'}" data-act="ciGuia">${ic('sparkle')} ${st.guia ? 'Esconder o guia do ChatGPT' : 'Gerar a lista com o ChatGPT'}</button>${guia}
+    <p class="muted sm">No seu app de finanças, procure <b>Exportar</b> (CSV ou planilha) e escolha o arquivo aqui. Ou cole uma lista, uma conta por linha:</p>
     <p class="note sm" style="white-space:pre-line">Aluguel; 1.500,00; dia 5
 Luz; 189,90; 12/11
 Cartão Nubank; 1.250,00; dia 10
@@ -2791,6 +2822,11 @@ App.module({
   actions: {
     cMes: d => { ui.cMes += +d.d; App.render(); },
     cImportar: () => Sheet.open({title: 'Importar contas', render: importForm, state: {txt: ''}}),
+    ciGuia: () => { Sheet.st.guia = !Sheet.st.guia; Sheet.refresh(); },
+    ciCopiarPrompt: async () => {
+      try { await navigator.clipboard.writeText(PROMPT_CONTAS); toast('Prompt copiado — cole no ChatGPT'); }
+      catch (e) { const t = $('#ci-prompt'); t.focus(); t.select(); toast('Selecionei o prompt: toque em Copiar no menu do iPhone'); }
+    },
     ciArquivo: () => {
       const st = Sheet.st, i = document.createElement('input'); i.type = 'file'; i.accept = '.csv,.txt,.tsv,text/*';
       i.onchange = () => { const f = i.files && i.files[0]; if (!f) return; const r = new FileReader();
