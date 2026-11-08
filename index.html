@@ -483,6 +483,7 @@ const P = {
   bag:'<path d="M5 8h14l-1 12.5H6z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>',
   heart:'<path d="M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
+  trash:'<path d="M4.5 7h15M9.5 7V5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2M6.5 7l1 12.5a1 1 0 0 0 1 .9h7a1 1 0 0 0 1-.9l1-12.5M10 11v6M14 11v6"/>',
   grip:'<circle cx="9" cy="6" r="1.2"/><circle cx="15" cy="6" r="1.2"/><circle cx="9" cy="12" r="1.2"/><circle cx="15" cy="12" r="1.2"/><circle cx="9" cy="18" r="1.2"/><circle cx="15" cy="18" r="1.2"/>',
   pencil:'<path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/>',
   check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
@@ -528,6 +529,7 @@ const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e)
    "cabelo", "cabelo-evo-<id>", "perfil"). Na conta: data/users/<id>/<doc> (privado).
    Espelhado no navegador: abre na hora e funciona sem conexão. */
 const CACHE = 'meu-ritual:v1';
+const APP_VERSAO = '9'; // o montar_site.py troca pelo número da versão do site
 /* IndexedDB: guarda tudo no aparelho com bem mais espaço que o localStorage (fotos incluídas) */
 const IDB = {
   db: null,
@@ -1127,7 +1129,8 @@ function openAjustes() {
     <textarea class="t" id="aj-backup" data-bind="backup" rows="3" placeholder="Cole aqui um backup para restaurar">${esc(st.backup)}</textarea>
     ${st.err ? `<p class="note warn">${esc(st.err)}</p>` : ''}
     <button class="btn ghost" data-act="ajRestaurar">Restaurar backup</button>
-    <button class="btn danger" data-act="ajApagar">Apagar todos os dados</button>`});
+    <button class="btn danger" data-act="ajApagar">Apagar todos os dados</button>
+    <p class="muted sm" style="text-align:center">Meu Ritual · ${APP_VERSAO.startsWith('__') ? 'versão do Claude' : 'versão ' + APP_VERSAO}</p>`});
 }
 Object.assign(App.actions, {
   ajNotif: async () => { try { const r = await Notification.requestPermission(); toast(r === 'granted' ? 'Avisos ativados' : 'Avisos não permitidos — dá para mudar nos Ajustes do iPhone'); } catch (e) { toast('Este aparelho não permite avisos aqui'); } Sheet.refresh(); },
@@ -1555,7 +1558,7 @@ function home() {
   const feitosHoje = T.hist().filter(x => dkey(new Date(x.inicio)) === dkey());
   if (!prog.length) {
     return `<section class="card soft"><p class="eyebrow">Seu treino de hoje</p><h2>${feitosHoje.length ? 'Treino feito' : 'Dia de descanso'}</h2>
-      <p class="sm muted" style="margin-top:6px">${feitosHoje.length ? feitosHoje.map(x => `${esc(x.nome)} · ${fmtDur(x.fim - x.inicio)}`).join('<br>') : `Nada programado para ${DIA_LONGO[hoje]}.`}</p>
+      <div class="sm muted" style="margin-top:6px;display:grid;gap:4px">${feitosHoje.length ? feitosHoje.map(x => `<span class="row" style="justify-content:space-between">${esc(x.nome)} · ${fmtDur(x.fim - x.inicio)}<button class="btn link sm" style="color:var(--danger)" data-act="hExcluir" data-id="${x.id}">${ic('trash')} Apagar</button></span>`).join('') : `Nada programado para ${DIA_LONGO[hoje]}.`}</div>
       ${s.treinos.length ? `<button class="btn sm ghost" style="margin-top:12px" data-act="go" data-r="treinos" data-tab="fichas">Escolher um treino</button>` : ''}</section>`;
   }
   return prog.map(t => {
@@ -1563,7 +1566,7 @@ function home() {
     const min = Math.round(t.exercicios.reduce((a, id) => { const e = T.ex(s, id); return a + (e ? (e.unid === 'min' ? e.reps * e.series : e.series * (1 + e.descanso / 60)) : 0); }, 0) / 5) * 5;
     return `<section class="card soft"><div class="hero"><div class="grow"><p class="eyebrow">${ic('dumbbell')} Seu treino de hoje</p><h2>${esc(t.nome)}</h2>
       <p class="sm muted">${plural(t.exercicios.length, 'exercício')}${min ? ` · ~${min} min` : ''}</p>
-      ${done ? `<p class="sm" style="color:var(--ok)">${ic('check')} Feito · ${fmtDur(done.fim - done.inicio)}</p>` : `<button class="btn primary sm" style="margin-top:6px" data-act="tIniciar" data-id="${t.id}">Começar treino ${ic('next')}</button>`}</div>
+      ${done ? `<p class="sm row" style="color:var(--ok);gap:8px">${ic('check')} Feito · ${fmtDur(done.fim - done.inicio)}<button class="btn link sm" style="color:var(--danger)" data-act="hExcluir" data-id="${done.id}">${ic('trash')} Apagar</button></p>` : `<button class="btn primary sm" style="margin-top:6px" data-act="tIniciar" data-id="${t.id}">Começar treino ${ic('next')}</button>`}</div>
       ${primeiro && primeiro.libId ? `${thumb(primeiro.libId, 'thumb')}` : ''}</div></section>`;
   }).join('');
 }
@@ -1891,11 +1894,11 @@ function viewHistorico(s) {
   const filtro = ui.hGrupo || 'todos';
   const Hf = filtro === 'todos' ? H : H.filter(x => x.itens.some(i => i.grupo === filtro));
   const lista = Hf.slice(0, ui.hTodos ? Hf.length : 8).map(x => { const r = resumoSessao(x), open = ui.hOpen === x.id;
-    return `<div><button class="hrow" data-act="hAbrir" data-id="${x.id}" aria-expanded="${open}"><div class="between"><div class="grow"><h3>${esc(x.nome)}</h3>
+    return `<div style="display:flex;gap:6px;align-items:flex-start"><button class="hrow" style="flex:1;min-width:0" data-act="hAbrir" data-id="${x.id}" aria-expanded="${open}"><div class="between"><div class="grow"><h3>${esc(x.nome)}</h3>
       <p class="sm muted">${DIA_CURTO[new Date(x.inicio).getDay()]}, ${fmtData(new Date(x.inicio))} · ${fmtDur(x.fim - x.inicio)} · ${r.feitas}/${r.total} séries</p></div>
       <span class="pct" style="color:${r.pct >= 100 ? 'var(--ok)' : r.pct >= 80 ? 'var(--ink)' : 'var(--warn)'}">${r.pct}%</span></div>
       ${open ? `<div class="hdet">${x.itens.map(it => `<div><span>${esc(it.nome)}</span><span>${it.feitas.map(v => v == null ? '–' : v).join(' · ')} <small>de ${it.plan}×${it.reps}</small></span></div>`).join('')}</div>` : ''}</button>
-      ${open ? `<div style="text-align:right;margin-top:6px"><button class="btn danger sm" data-act="hExcluir" data-id="${x.id}">${ic('x')} Apagar este treino</button></div>` : ''}</div>`; }).join('');
+      <button class="icon-btn" style="color:var(--danger);margin-top:6px" data-act="hExcluir" data-id="${x.id}" aria-label="Apagar ${esc(x.nome)}">${ic('trash')}</button></div>`; }).join('');
   return `<div class="tiles">
       <div class="tile"><b>${H.length}</b><span>treinos realizados</span></div>
       <div class="tile"><b>${vals[7]}${meta ? `<small style="font-size:1rem;color:var(--muted)">/${meta}</small>` : ''}</b><span>nesta semana</span></div>
@@ -2050,7 +2053,7 @@ App.module({
         <div class="row-btns"><button class="btn ghost" data-act="sDescartar">Descartar treino</button><button class="btn primary" data-act="sFinalizar">Finalizar treino</button></div>`});
     },
     sIrFechar: d => { Sheet.close(); App.actions.sIr(d); },
-    sComo: d => { const x = LIB[d.k]; Sheet.open({title: 'Como fazer', render: () => `<div class="howto"><h3>Posição inicial</h3><p class="sm">${esc(x.ini)}</p></div>
+    sComo: d => { const x = LIB[d.k]; Sheet.open({title: x.n, render: () => `${demo(x.k)}<div class="chips wrap">${x.m.map(m => `<span class="pill">${esc(m)}</span>`).join('')}</div><div class="howto"><h3>Posição inicial</h3><p class="sm">${esc(x.ini)}</p></div>
       <div class="howto"><h3>Passo a passo</h3><ol>${x.p.map(p => `<li><span class="sm">${esc(p)}</span></li>`).join('')}</ol></div>
       <div class="howto"><h3>Movimento correto</h3><p class="sm">${esc(x.mov)}</p></div><div class="howto"><h3>Erros comuns</h3><ul class="sm">${x.er.map(e => `<li>${esc(e)}</li>`).join('')}</ul></div>`}); },
     sSerie: d => {
@@ -2642,7 +2645,7 @@ function viewContas() {
   const total = doMes.reduce((a, c) => a + (c.valor || 0), 0), pago = doMes.filter(c => c.pago).reduce((a, c) => a + (c.valor || 0), 0);
   const vencidas = abertas(s).filter(c => diasAte(c.venc) < 0 && !c.venc.startsWith(mk));
   const nomeMes = ref.toLocaleDateString('pt-BR', {month: 'long', year: 'numeric'});
-  return `<header class="top"><div><p class="eyebrow">Financeiro</p><h1>Contas</h1></div><button class="btn sm primary" data-act="cNova">${ic('plus')} Conta</button></header>
+  return `<header class="top"><div><p class="eyebrow">Financeiro</p><h1>Contas</h1></div><div class="row" style="gap:6px"><button class="btn sm ghost" data-act="cImportar">Importar</button><button class="btn sm primary" data-act="cNova">${ic('plus')} Conta</button></div></header>
     <div class="stack"><section class="card"><div class="cal-nav"><button class="icon-btn sm" data-act="cMes" data-d="-1" aria-label="Mês anterior">${ic('back')}</button>
       <h3 style="text-transform:capitalize">${nomeMes}</h3><button class="icon-btn sm" data-act="cMes" data-d="1" aria-label="Próximo mês">${ic('next')}</button></div>
       <div class="sum-grid" style="margin-top:14px"><div><b style="font-size:1.25rem">${fmtBRL(total)}</b><span>total do mês</span></div><div><b style="font-size:1.25rem;color:var(--ok)">${fmtBRL(pago)}</b><span>pago</span></div><div><b style="font-size:1.25rem">${fmtBRL(total - pago)}</b><span>a pagar</span></div></div>
@@ -2667,6 +2670,56 @@ function form(st) {
     ${podeArquivo() && st.id ? `<button class="btn ghost" data-act="cLembrar">${ic('bell')} Lembrar no iPhone (1 dia antes, 9h)</button>` : ''}
     <div class="row-btns">${st.id ? `<button class="btn danger" data-act="cExcluir">Excluir</button>` : ''}<button class="btn primary" data-act="cSalvar">Salvar conta</button></div>`;
 }
+/* Importar: aceita o arquivo exportado de outro app (CSV/TXT) ou uma lista colada.
+   Cada linha precisa ter um nome e um valor; data (12/11, 12/11/2026, 2026-11-12 ou "dia 12") é opcional. */
+const CAT_PALAVRAS = [[/luz|energia|enel|light|cemig|água|agua|sabesp|cedae|gás|gas\b|comgás/i, 'casa'], [/internet|celular|telefone|claro|vivo|tim\b|oi\b|net\b|fibra/i, 'internet'],
+  [/cart[aã]o|nubank|fatura|itaú|itau|inter\b|santander|bradesco|c6|picpay/i, 'cartao'], [/aluguel|condom[ií]nio|financiamento|casa\b/i, 'moradia'],
+  [/netflix|spotify|amazon|prime|disney|hbo|max\b|youtube|icloud|apple|globoplay|deezer|assinatura/i, 'assinaturas'], [/plano de sa|sa[uú]de|unimed|amil|bradesco sa|academia|gympass|wellhub|farm[aá]cia/i, 'saude'],
+  [/faculdade|curso|escola|mensalidade|ingl[eê]s/i, 'educacao'], [/ipva|iptu|imposto|taxa|das\b|inss/i, 'impostos'], [/gasolina|combust|uber|99|carro|seguro auto|estacionamento|ônibus|onibus/i, 'transporte']];
+function lerContas(txt) {
+  const hoje = new Date(), out = [];
+  String(txt || '').split(/\r?\n/).forEach(l => {
+    let resto = l.replace(/"/g, ' ').trim(), venc = null, m;
+    if (!resto) return;
+    if ((m = resto.match(/(\d{4})-(\d{2})-(\d{2})/))) { venc = `${m[1]}-${m[2]}-${m[3]}`; resto = resto.replace(m[0], ' '); }
+    if (!venc && (m = resto.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/))) { let y = m[3] ? +m[3] : hoje.getFullYear(); if (y < 100) y += 2000; venc = dkey(new Date(y, +m[2] - 1, +m[1])); resto = resto.replace(m[0], ' '); }
+    if (!venc && (m = resto.match(/\bdia\s*(\d{1,2})\b/i))) { const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate(); venc = dkey(new Date(hoje.getFullYear(), hoje.getMonth(), Math.min(+m[1], fim))); resto = resto.replace(m[0], ' '); }
+    const nums = [...resto.matchAll(/(R\$\s*)?(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+,\d{1,2}|\d+\.\d{1,2}|\d+)/g)];
+    if (!nums.length) return;
+    const pick = nums.find(n => n[1] || /,/.test(n[2])) || nums[nums.length - 1];
+    const valor = parseValor(pick[2].includes(',') || /\.\d{3}/.test(pick[2]) ? pick[2] : pick[2].replace('.', ','));
+    if (!valor) return;
+    resto = resto.replace(pick[0], ' ');
+    const unica = /\b(única|unica|avulsa|parcela)\b/i.test(resto);
+    const nome = resto.replace(/\b(mensal|todo m[eê]s|única|unica|avulsa|vencimento|venc\.?|valor|r\$)\b/gi, ' ').replace(/[;,\t|]+/g, ' ').replace(/\s+/g, ' ').replace(/^[\s\-–:]+|[\s\-–:]+$/g, '').trim();
+    if (!nome) return;
+    const cat = (CAT_PALAVRAS.find(([re]) => re.test(nome)) || [0, 'outros'])[1];
+    out.push({nome: nome.charAt(0).toUpperCase() + nome.slice(1), valor, venc: venc || dkey(hoje), semData: !venc, recorrente: !unica, cat, sel: true});
+  });
+  return out;
+}
+function importForm(st) {
+  if (st.itens) {
+    const s = F.st(), ja = x => s.contas.some(c => c.nome.toLowerCase() === x.nome.toLowerCase() && c.venc === x.venc);
+    const n = st.itens.filter(x => x.sel && !ja(x)).length;
+    return `<p class="muted sm">${plural(st.itens.length, 'conta encontrada', 'contas encontradas')}. Desmarque o que não quiser. Depois dá para editar cada uma.</p>
+      <div class="steps">${st.itens.map((x, i) => `<div class="step" style="grid-template-columns:auto 1fr auto;cursor:default">
+        <button class="box" role="checkbox" aria-checked="${x.sel && !ja(x)}" data-act="ciSel" data-i="${i}" ${ja(x) ? 'disabled' : ''}>${ic('check')}</button>
+        <span style="min-width:0"><p class="nome">${esc(x.nome)}</p><p class="tag">${ja(x) ? 'já cadastrada' : `${x.semData ? 'sem data · ' : ''}vence ${fmtData(fromKey(x.venc))} · ${CAT[x.cat]}${x.recorrente ? ' · todo mês' : ''}`}</p></span>
+        <span class="money">${fmtBRL(x.valor)}</span></div>`).join('')}</div>
+      ${st.itens.some(x => x.semData) ? `<p class="note warn">Linhas sem data ficaram com vencimento hoje. Ajuste depois tocando na conta.</p>` : ''}
+      <div class="row-btns"><button class="btn ghost" data-act="ciVoltar">Voltar</button><button class="btn primary" data-act="ciOk" ${n ? '' : 'disabled'}>Importar ${plural(n, 'conta')}</button></div>`;
+  }
+  return `<p class="muted sm">No seu app de finanças, procure <b>Exportar</b> (CSV ou planilha) e escolha o arquivo aqui. Ou cole uma lista, uma conta por linha:</p>
+    <p class="note sm" style="white-space:pre-line">Aluguel; 1.500,00; dia 5
+Luz; 189,90; 12/11
+Cartão Nubank; 1.250,00; dia 10
+Netflix; 39,90; dia 18</p>
+    <button class="btn ghost" data-act="ciArquivo">${ic('book')} Escolher arquivo</button>
+    <textarea class="t" id="ci-txt" data-bind="txt" rows="6" placeholder="Cole aqui suas contas">${esc(st.txt || '')}</textarea>
+    ${st.err ? `<p class="note warn">${esc(st.err)}</p>` : ''}
+    <button class="btn primary" data-act="ciLer">Ver contas encontradas</button>`;
+}
 App.hooks.avisos.push(() => abertas(F.st()).map(c => { const d = fromKey(c.venc); d.setHours(9, 0, 0, 0); return {id: 'conta-' + c.id, titulo: `Vence hoje: ${c.nome}`, corpo: fmtBRL(c.valor), quando: d}; }));
 
 App.module({
@@ -2674,6 +2727,23 @@ App.module({
   routes: {contas: viewContas}, home,
   actions: {
     cMes: d => { ui.cMes += +d.d; App.render(); },
+    cImportar: () => Sheet.open({title: 'Importar contas', render: importForm, state: {txt: ''}}),
+    ciArquivo: () => {
+      const st = Sheet.st, i = document.createElement('input'); i.type = 'file'; i.accept = '.csv,.txt,.tsv,text/*';
+      i.onchange = () => { const f = i.files && i.files[0]; if (!f) return; const r = new FileReader();
+        r.onload = () => { if (Sheet.st !== st) return; st.txt = String(r.result); App.actions.ciLer(); }; r.readAsText(f); };
+      i.click();
+    },
+    ciLer: () => { const st = Sheet.st, itens = lerContas(st.txt);
+      if (!itens.length) { st.err = 'Não encontrei contas. Cada linha precisa ter o nome e o valor, por exemplo: Luz; 189,90; dia 12'; return Sheet.refresh(); }
+      st.err = ''; st.itens = itens; Sheet.refresh(); },
+    ciSel: d => { const x = Sheet.st.itens[+d.i]; x.sel = !x.sel; Sheet.refresh(); },
+    ciVoltar: () => { delete Sheet.st.itens; Sheet.refresh(); },
+    ciOk: () => {
+      const st = Sheet.st, s = F.st(), ja = x => s.contas.some(c => c.nome.toLowerCase() === x.nome.toLowerCase() && c.venc === x.venc);
+      const novas = st.itens.filter(x => x.sel && !ja(x)).map(x => ({id: uid(), serie: uid(), nome: x.nome, valor: x.valor, venc: x.venc, cat: x.cat, recorrente: x.recorrente, pago: false, pagoEm: null, obs: ''}));
+      s.contas.push(...novas); F.save(s); Sheet.close(); ui.cMes = 0; App.render(); toast(`${plural(novas.length, 'conta importada', 'contas importadas')}`);
+    },
     cIrVencida: () => { const v = abertas(F.st()).find(c => diasAte(c.venc) < 0); if (!v) return; const d = fromKey(v.venc), n = new Date(); ui.cMes = (d.getFullYear() - n.getFullYear()) * 12 + d.getMonth() - n.getMonth(); App.render(); },
     cNova: () => Sheet.open({title: 'Nova conta', render: form, state: {nome: '', valor: '', venc: dkey(), cat: 'outros', recorrente: true, obs: ''}}),
     cEditar: d => { const c = F.st().contas.find(x => x.id === d.id); Sheet.open({title: 'Editar conta', render: form, state: {...clone(c), valor: String(c.valor || '').replace('.', ',')}}); },
