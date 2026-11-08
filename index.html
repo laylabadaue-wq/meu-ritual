@@ -1350,6 +1350,99 @@ I('Walking_Treadmill', pose([78, 58], 4, [25, 60], [-25, -5], [-22, -30], [24, 8
 I('Mountain_Climbers', pose([75, 80], 72, [4, 4], [4, 4], [-72, -72], [50, -60]), pose([75, 80], 72, [4, 4], [4, 4], [50, -60], [-72, -72]), {fundo: fx.mat});
 I('Cross-Body_Crunch', pose([84, 97], -90, [-110, 170], [-110, 170], [150, 21], [150, 21]), pose([84, 97], -60, [-80, 170], [120, -40], [150, 21], [150, 21]), {fundo: fx.mat});
 
+/* --- demais exercícios da biblioteca --- */
+const C = (k, src, o = {}) => { const s = ILU[src]; ILU[k] = {...s, ...o, a: {...s.a, ...(o.a || {})}, b: {...s.b, ...(o.b || {})}}; };
+const box = (x, y, w) => `<rect class="fpr" opacity=".45" x="${x}" y="${y}" width="${w}" height="${104.5 - y}" rx="3"/>`;
+const esteira = ILU.Walking_Treadmill.fundo;
+const polia = (x, y) => fx.post(x) + `<circle class="fpr" cx="${x + 3.5}" cy="${y}" r="3"/>`;
+/* superiores e braços */
+C('Hammer_Curls', 'Dumbbell_Bicep_Curl');
+C('Barbell_Curl', 'Dumbbell_Bicep_Curl', {mao: 'plate', maoF: false});
+I('Concentration_Curls', pose([70, 78], 40, [60, 90], [0, 0], [90, 0], [90, 0]), pose([70, 78], 40, [60, 90], [0, 168], [90, 0], [90, 0]), {mao: 'db', maoF: false, fundo: () => fx.seat(50, 80, 36)});
+I('Tricep_Dumbbell_Kickback', pose([64, 64], 80, [5, 5], [-85, 0], [10, -10], [0, 0]), pose([64, 64], 80, [5, 5], [-85, -90], [10, -10], [0, 0]), {mao: 'db', maoF: false, fundo: () => fx.bench(84, 92, 40)});
+I('Bench_Dips', pose([58, 82], 0, [-17, -17], [-17, -17], [70, 50], [70, 50]), pose([58, 94], 0, [-70, 15], [-70, 15], [75, 85], [75, 85]), {fundo: () => fx.bench(24, 80, 28)});
+I('Standing_Dumbbell_Triceps_Extension', pose([80, 60], 0, [175, -10], [175, -10], [-3, -3], [3, 3]), pose([80, 60], 0, [175, 178], [175, 178], [-3, -3], [3, 3]), {mao: 'db', maoF: false});
+I('One-Arm_Dumbbell_Row', pose([64, 64], 80, [5, 5], [0, 0], [10, -10], [0, 0]), pose([64, 64], 80, [5, 5], [-60, 0], [10, -10], [0, 0]), {mao: 'db', maoF: false, fundo: () => fx.bench(84, 92, 40)});
+I('Face_Pull', pose([76, 60], -4, [80, 85], [80, 85], [-6, -3], [6, 3]), pose([76, 60], -6, [95, -160], [95, -160], [-6, -3], [6, 3]), {mao: 'rope', maoF: false, fundo: P => polia(124, 26) + fx.cabo([127, 26], P.an[2])});
+I('Pushups', pose([75, 80], 72, [4, 4], [4, 4], [-72, -72], [-72, -72]), pose([75, 92], 80, [-40, 60], [-40, 60], [-80, -80], [-80, -80]), {fundo: fx.mat});
+I('Dumbbell_Bench_Press', pose([80, 80], -90, [20, 170], [20, 170], [90, 0], [90, 0]), pose([80, 80], -90, [180, 180], [180, 180], [90, 0], [90, 0]), {mao: 'db', fundo: () => fx.bench(20, 84, 70)});
+I('Incline_Dumbbell_Press', pose([78, 80], -55, [40, 150], [40, 150], [90, 0], [90, 0]), pose([78, 80], -55, [160, 160], [160, 160], [90, 0], [90, 0]),
+  {mao: 'db', fundo: () => `<polyline class="pr" stroke-width="7" opacity=".45" points="84,86 42,57"/><line class="pr" stroke-width="2.5" x1="70" y1="86" x2="70" y2="104"/>`});
+I('Dumbbell_Flyes', pose([80, 80], -90, [40, 60], [40, 60], [90, 0], [90, 0]), pose([80, 80], -90, [178, 178], [178, 178], [90, 0], [90, 0]), {mao: 'db', fundo: () => fx.bench(20, 84, 70)});
+I('Machine_Bench_Press', pose([78, 72], -5, [-30, 90], [-30, 90], [88, 0], [88, 0]), pose([78, 72], -5, [88, 90], [88, 90], [88, 0], [88, 0]),
+  {fundo: () => fx.seat(60, 74, 34, 58, 30, 44), frente: P => `<rect class="fpr" x="${(P.an[2][0] - 1.5).toFixed(1)}" y="${(P.an[2][1] - 6).toFixed(1)}" width="3" height="12" rx="1.5"/>`});
+I('Butterfly', pose([80, 66], 0, [-90, 180], [90, 180], [-8, -2], [8, 2]), pose([80, 66], 0, [-35, 165], [35, 195], [-8, -2], [8, 2]), {front: true, fundo: () => `<rect class="fpr" opacity=".3" x="64" y="22" width="32" height="46" rx="4"/>` + fx.seat(58, 66, 44)});
+I('Bent_Over_Two-Dumbbell_Row', pose([72, 60], 70, [0, 0], [0, 0], [12, -8], [12, -8]), pose([72, 60], 70, [-50, 0], [-50, 0], [12, -8], [12, -8]), {mao: 'db'});
+C('Close-Grip_Front_Lat_Pulldown', 'Wide-Grip_Lat_Pulldown', {frente: P => `<line class="pr" stroke-width="3" x1="${(P.an[2][0] - 6).toFixed(1)}" y1="${P.an[2][1].toFixed(1)}" x2="${(P.an[2][0] + 6).toFixed(1)}" y2="${P.an[2][1].toFixed(1)}"/>`});
+I('Inverted_Row', pose([80, 88], 75, [175, 178], [175, 178], [-75, -75], [-75, -75]), pose([80, 80], 72, [-120, 117], [-120, 117], [-72, -72], [-72, -72]),
+  {fundo: () => `<line class="pr" stroke-width="3.5" x1="96" y1="52" x2="146" y2="52"/><line class="pr" stroke-width="3" x1="140" y1="52" x2="140" y2="104"/>`});
+I('Reverse_Flyes', pose([72, 60], 75, [0, 0], [0, 0], [12, -8], [12, -8]), pose([72, 60], 75, [-62, -58], [-62, -58], [12, -8], [12, -8]), {mao: 'db'});
+I('Front_Dumbbell_Raise', pose([80, 60], 0, [6, 6], [8, 8], [-3, -3], [3, 3]), pose([80, 60], 0, [86, 86], [88, 88], [-3, -3], [3, 3]), {mao: 'db'});
+C('Arnold_Dumbbell_Press', 'Dumbbell_Shoulder_Press', {a: {af: [140, 185], an: [140, 185]}});
+C('Machine_Shoulder_Military_Press', 'Dumbbell_Shoulder_Press');
+I('Cable_Rope_Overhead_Triceps_Extension', pose([82, 60], 20, [160, -20], [160, -20], [-8, -8], [10, 4]), pose([82, 60], 20, [150, 150], [150, 150], [-8, -8], [10, 4]), {mao: 'rope', maoF: false, fundo: P => polia(24, 40) + fx.cabo([28, 40], P.an[2])});
+I('Preacher_Curl', pose([70, 74], 10, [60, 60], [60, 60], [88, 0], [88, 0]), pose([70, 74], 10, [60, 170], [60, 170], [88, 0], [88, 0]),
+  {mao: 'plate', maoF: false, fundo: () => fx.seat(54, 76, 30) + `<polyline class="pr" stroke-width="7" opacity=".45" points="78,50 96,62"/><line class="pr" stroke-width="2.5" x1="90" y1="62" x2="90" y2="104"/>`});
+/* pernas */
+C('Bodyweight_Squat', 'Barbell_Squat', {mao: null, a: {af: [3, 3], an: [3, 3]}, b: {af: [95, 95], an: [95, 95]}});
+I('Goblet_Squat', pose([80, 60], 0, [20, 150], [20, 150], [0, 0], [0, 0]), pose([70, 82], 20, [40, 170], [40, 170], [80, -20], [80, -20]), {mao: 'kb', maoF: false});
+I('Seated_Leg_Curl', pose([72, 72], -10, [15, 60], [15, 60], [90, 88], [90, 88]), pose([72, 72], -10, [15, 60], [15, 60], [90, -10], [90, -10]), {fundo: () => fx.seat(56, 74, 32, 52, 36, 40), frente: P => fx.pad(P.ln[2])});
+I('Dumbbell_Lunges', pose([80, 60], 0, [3, 3], [3, 3], [-3, -3], [3, 3]), pose([80, 79], 5, [3, 3], [3, 3], [-10, -80], [85, 0]), {mao: 'db'});
+C('Dumbbell_Squat', 'Barbell_Squat', {mao: 'db', maoF: true, a: {af: [0, 0], an: [0, 0]}, b: {af: [0, 0], an: [0, 0]}});
+I('Hack_Squat', pose([80, 58], -15, [-40, 165], [-40, 165], [8, 8], [8, 8]), pose([86, 82], -20, [-60, 145], [-60, 145], [100, -10], [100, -10]),
+  {fundo: () => `<line class="pr" stroke-width="3" x1="46" y1="104" x2="76" y2="8"/><rect class="fpr" opacity=".4" x="70" y="100" width="44" height="4.5" rx="2"/>`});
+C('Smith_Machine_Squat', 'Barbell_Squat', {fundo: () => `<line class="pr" stroke-width="2.5" x1="54" y1="4" x2="54" y2="104"/><line class="pr" stroke-width="2.5" x1="116" y1="4" x2="116" y2="104"/>`});
+I('Seated_Calf_Raise', pose([72, 72], 0, [20, 70], [20, 70], [90, 0], [90, 0], 0), pose([72, 72], 0, [20, 70], [20, 70], [84, 0], [84, 0], -50),
+  {fundo: () => fx.seat(56, 74, 30) + `<rect class="fpr" opacity=".45" x="84" y="98" width="24" height="6.5" rx="2"/>`, frente: P => fx.pad(P.ln[1])});
+I('Dumbbell_Step_Ups', pose([78, 60], 0, [3, 3], [3, 3], [0, 0], [60, -20]), pose([92, 40], 0, [3, 3], [3, 3], [0, 0], [0, 0]), {mao: 'db', fundo: () => box(84, 82, 44)});
+C('Bodyweight_Walking_Lunge', 'Dumbbell_Lunges', {mao: null, a: {af: [-20, 60], an: [-20, 60]}, b: {af: [-20, 60], an: [-20, 60]}});
+C('Single-Leg_Leg_Extension', 'Leg_Extensions', {b: {lf: [90, 0]}});
+C('Thigh_Adductor', 'Thigh_Abductor', {a: {lf: [-38, -12], ln: [38, 12]}, b: {lf: [-8, -2], ln: [8, 2]}});
+/* glúteos */
+I('Butt_Lift_Bridge', pose([80, 98], -90, [90, 90], [90, 90], [140, 15], [140, 15]), pose([82, 84], -112, [95, 95], [95, 95], [103, 3], [103, 3]), {fundo: fx.mat});
+C('Single_Leg_Glute_Bridge', 'Butt_Lift_Bridge', {a: {ln: [120, 120]}, b: {ln: [112, 112]}});
+I('Glute_Kickback', pose([70, 83], 70, [0, 0], [0, 0], [0, -90], [0, -90]), pose([70, 83], 70, [0, 0], [0, 0], [0, -90], [-100, 180]), {fundo: fx.mat});
+I('Plie_Dumbbell_Squat', pose([80, 60], 0, [-3, -3], [3, 3], [-20, -15], [20, 15]), pose([80, 74], 0, [-3, -3], [3, 3], [-55, -5], [55, 5]), {front: true, mao: 'db', maoF: false});
+C('Step-up_with_Knee_Raise', 'Dumbbell_Step_Ups', {mao: null, a: {af: [20, 60], an: [-20, 40]}, b: {lf: [100, 0], af: [-20, 40], an: [20, 60]}});
+C('Barbell_Glute_Bridge', 'Butt_Lift_Bridge', {a: {af: [70, 70], an: [70, 70]}, b: {af: [93, 93], an: [93, 93]}, frente: P => `<circle cx="${P.H[0].toFixed(1)}" cy="${(P.H[1] - 6).toFixed(1)}" r="9" fill="none" class="pr" stroke-width="3"/>`});
+I('Good_Morning', pose([78, 60], 0, [-40, 165], [-40, 165], [3, -3], [3, -3]), pose([70, 60], 80, [40, -115], [40, -115], [10, -6], [10, -6]), {mao: 'plateS', maoF: false});
+I('Sumo_Deadlift', pose([66, 78], 55, [0, 0], [0, 0], [70, -25], [70, -25]), pose([78, 60], 0, [0, 0], [0, 0], [3, -3], [3, -3]), {mao: 'plate', maoF: false});
+I('Side_Leg_Raises', pose([85, 96], -90, [-150, -60], [70, 70], [90, 90], [90, 90]), pose([85, 96], -90, [-150, -60], [70, 70], [90, 90], [60, 60]), {fundo: fx.mat});
+C('Dumbbell_Rear_Lunge', 'Dumbbell_Lunges');
+C('Hip_Extension_with_Bands', 'Glute_Kickback', {b: {ln: [-95, -95]}});
+I('Kettlebell_One-Legged_Deadlift', pose([78, 60], 0, [0, 0], [0, 0], [0, 0], [3, -3]), pose([76, 61], 85, [0, 0], [0, 0], [-85, -85], [8, -4]), {mao: 'kb', maoF: false});
+I('One-Arm_Kettlebell_Swings', pose([70, 62], 60, [-20, -20], [-20, -20], [15, -10], [15, -10]), pose([78, 60], 0, [90, 90], [90, 90], [3, -3], [3, -3]), {mao: 'kb', maoF: false});
+/* abdômen */
+C('Sit-Up', 'Crunches', {b: {t: -15, af: [130, -50], an: [130, -50]}});
+I('Dead_Bug', pose([80, 97], -90, [180, 180], [180, 180], [180, 90], [180, 90]), pose([80, 97], -90, [180, 180], [-120, -110], [95, 92], [180, 90]), {fundo: fx.mat});
+I('Air_Bike', pose([84, 97], -65, [-110, 170], [-110, 170], [150, 95], [110, 100]), pose([84, 97], -65, [-110, 170], [-110, 170], [110, 100], [150, 95]), {fundo: fx.mat});
+I('Ab_Roller', pose([60, 80], 30, [20, 20], [20, 20], [0, -90], [0, -90]), pose([64, 85], 75, [55, 55], [55, 55], [-25, -90], [-25, -90]), {fundo: fx.mat, frente: P => `<circle class="fpr" cx="${P.an[2][0].toFixed(1)}" cy="${(P.an[2][1]).toFixed(1)}" r="4.5"/>`});
+C('Oblique_Crunches_-_On_The_Floor', 'Crunches', {a: {af: [-110, 170], an: [-110, 170], lf: [150, 40], ln: [140, 40]}, b: {t: -66, af: [-80, 170], an: [-80, 170], lf: [150, 40], ln: [140, 40]}});
+C('Bent-Knee_Hip_Raise', 'Reverse_Crunch');
+I('Cable_Crunch', pose([70, 82], 0, [150, -160], [150, -160], [0, -90], [0, -90]), pose([70, 82], 62, [-150, 100], [-150, 100], [0, -90], [0, -90]), {mao: 'rope', maoF: false, fundo: P => polia(112, 8) + fx.cabo([115, 8], P.an[2]) + fx.mat()});
+I('Pallof_Press', pose([80, 60], 0, [20, 160], [20, 160], [-4, -2], [4, 2]), pose([80, 60], 0, [90, 90], [90, 90], [-4, -2], [4, 2]), {fundo: P => polia(20, 34) + fx.cabo([24, 34], P.an[2])});
+I('Superman', pose([78, 96], 90, [88, 90], [88, 90], [-90, -90], [-90, -90]), pose([78, 96], 80, [110, 110], [110, 110], [-108, -108], [-108, -108]), {fundo: fx.mat});
+/* cardio */
+C('Jogging_Treadmill', 'Walking_Treadmill', {a: {af: [30, 110], an: [-30, 60], lf: [-30, -70], ln: [35, -10]}, b: {af: [-30, 60], an: [30, 110], lf: [35, -10], ln: [-30, -70]}});
+C('Running_Treadmill', 'Walking_Treadmill', {a: {h: [78, 56], t: 10, af: [40, 120], an: [-40, 50], lf: [-38, -95], ln: [45, -5]}, b: {h: [78, 56], t: 10, af: [-40, 50], an: [40, 120], lf: [45, -5], ln: [-38, -95]}});
+const bike = () => `<line class="pr" stroke-width="3" x1="68" y1="64" x2="76" y2="98"/><line class="pr" stroke-width="3" x1="76" y1="98" x2="112" y2="96"/><line class="pr" stroke-width="3" x1="110" y1="96" x2="114" y2="40"/><line class="pr" stroke-width="3" x1="108" y1="40" x2="122" y2="40"/><rect class="fpr" x="60" y="61" width="16" height="4" rx="2"/>`;
+I('Bicycling_Stationary', pose([70, 62], 35, [70, 70], [70, 70], [20, -30], [70, -10]), pose([70, 62], 35, [70, 70], [70, 70], [70, -10], [20, -30]), {fundo: () => bike() + `<rect class="fpr" opacity=".4" x="60" y="98" width="62" height="6" rx="3"/>`});
+C('Bicycling', 'Bicycling_Stationary', {fundo: () => bike() + `<circle cx="56" cy="88" r="15" fill="none" class="pr" stroke-width="2"/><circle cx="124" cy="88" r="15" fill="none" class="pr" stroke-width="2"/>`});
+I('Elliptical_Trainer', pose([78, 56], 0, [30, 80], [60, 100], [-15, -10], [20, 0]), pose([78, 56], 0, [60, 100], [30, 80], [20, 0], [-15, -10]),
+  {fundo: () => `<rect class="fpr" opacity=".4" x="40" y="98" width="86" height="6" rx="3"/><line class="pr" stroke-width="3" x1="112" y1="98" x2="104" y2="30"/>`});
+I('Stairmaster', pose([78, 56], 6, [-20, 60], [20, 60], [0, 0], [50, -10]), pose([78, 52], 6, [20, 60], [-20, 60], [50, -10], [0, 0]),
+  {fundo: () => `<polyline class="pr" stroke-width="3" opacity=".6" points="50,104 50,96 70,96 70,88 90,88 90,80 110,80"/><line class="pr" stroke-width="3" x1="116" y1="104" x2="110" y2="34"/>`});
+C('Step_Mill', 'Stairmaster');
+I('Rope_Jumping', pose([80, 60], 0, [-30, -20], [30, 20], [-3, -3], [3, 3]), pose([80, 52], 0, [-30, -20], [30, 20], [-6, -6], [6, 6]),
+  {front: true, frente: P => { const a = P.af[2], b = P.an[2], baixo = P.ln[3][1] + 4 > 100;
+    return `<path d="M${a[0].toFixed(1)} ${a[1].toFixed(1)} Q 80 ${baixo ? 112 : -6} ${b[0].toFixed(1)} ${b[1].toFixed(1)}" fill="none" class="pr" stroke-width="1.6"/>`; }});
+I('Star_Jump', pose([80, 66], 0, [-10, -10], [10, 10], [-12, 12], [12, -12]), pose([80, 50], 0, [-150, -150], [150, 150], [-30, -30], [30, 30]), {front: true});
+I('Rowing_Stationary', pose([54, 94], 20, [95, 95], [95, 95], [140, 42], [140, 42]), pose([44, 94], -20, [-20, 95], [-20, 95], [92, 95], [92, 95]),
+  {fundo: P => `<line class="pr" stroke-width="3" x1="20" y1="100" x2="120" y2="100"/><rect class="fpr" opacity=".45" x="30" y="96" width="30" height="4" rx="2"/><rect class="fpr" opacity=".45" x="96" y="84" width="5" height="16" rx="2"/>` + fx.cabo(P.an[2], [122, 88])});
+I('Battling_Ropes', pose([74, 70], 25, [40, 50], [110, 110], [60, -20], [60, -20]), pose([74, 70], 25, [110, 110], [40, 50], [60, -20], [60, -20]),
+  {frente: P => { const h = P.an[2]; return `<path d="M${h[0].toFixed(1)} ${h[1].toFixed(1)} q 10 -10 20 0 t 20 0 t 20 0" fill="none" class="pr" stroke-width="2.4"/>`; }});
+I('Front_Box_Jump', pose([66, 80], 35, [-40, -40], [-40, -40], [80, -20], [80, -20]), pose([100, 48], 20, [80, 80], [80, 80], [60, -15], [60, -15]), {fundo: () => box(90, 80, 40)});
+
 /* anima as ilustrações visíveis na tela (vai e volta a cada ~2,8 s) */
 const iluMov = !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 (function animar(ts) {
