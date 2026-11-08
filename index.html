@@ -531,7 +531,7 @@ const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e)
    "cabelo", "cabelo-evo-<id>", "perfil"). Na conta: data/users/<id>/<doc> (privado).
    Espelhado no navegador: abre na hora e funciona sem conexão. */
 const CACHE = 'meu-ritual:v1';
-const APP_VERSAO = '17'; // o montar_site.py troca pelo número da versão do site
+const APP_VERSAO = '18'; // o montar_site.py troca pelo número da versão do site
 /* IndexedDB: guarda tudo no aparelho com bem mais espaço que o localStorage (fotos incluídas) */
 const IDB = {
   db: null,
@@ -568,17 +568,21 @@ const Store = {
   setSync(s) { this.sync = s; App.syncBadge(); },
   async connect() {
     const local = () => { this.mode = 'local'; this.ready = true; this.setSync('local'); this.emit(); };
-    if (!window.claude || !window.claude.use) return local();
+    if (!window.claude || !window.claude.use) { if (Nuvem.configurada()) { local(); Nuvem.iniciar(); return; } return local(); }
     let db, user;
     try { [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]); } catch (e) { return local(); }
     if (!db || !user) return local();
     let id = null;
     try { id = await user.id(); } catch (e) {}
     if (!id) return local();
-    this.col = db.collection('data/users/' + id);
-    this.mode = 'cloud'; this.setSync('loading');
+    this.ligar(db.collection('data/users/' + id));
+  },
+  /* liga a sincronização a uma coleção remota (Claude ou Firebase: mesma forma de API) */
+  ligar(col) {
+    this.desligar();
+    this.col = col; this.mode = 'cloud'; this.ready = false; this.setSync('loading');
     const t = setTimeout(() => { if (!this.ready) { this.ready = true; this.setSync('offline'); this.emit(); } }, 10000);
-    this.col.onSnapshot(snap => {
+    this.unsub = col.onSnapshot(snap => {
       let changed = false; const seen = new Set();
       for (const d of snap.docs) {
         seen.add(d.id);
@@ -588,13 +592,21 @@ const Store = {
       }
       if (!snap.metadata.fromCache) {
         clearTimeout(t);
-        if (!this.ready || this.sync === 'offline') for (const k of Object.keys(this.docs)) if (!seen.has(k)) this.schedule(k);
+        // primeira resposta da conta: envia o que só existe neste aparelho (ou que está mais novo aqui)
+        if (!this.ready || this.sync === 'offline') {
+          const remoto = Object.fromEntries(snap.docs.map(d => [d.id, d.data().savedAt || 0]));
+          for (const k of Object.keys(this.docs)) if (!seen.has(k) || (this.docs[k].savedAt || 0) > remoto[k]) this.schedule(k);
+        }
         if (!this.ready) changed = true;
         this.ready = true;
         if (!this.dirty.size && !this.flushing) this.setSync('ok');
       }
       if (changed) { this.cache(); this.emit(); }
     }, () => { clearTimeout(t); this.ready = true; this.setSync('erro'); this.emit(); });
+  },
+  desligar() {
+    if (this.unsub) { try { this.unsub(); } catch (e) {} }
+    this.unsub = null; this.col = null; this.dirty.clear(); this.mode = 'local'; this.ready = true;
   },
   schedule(id) {
     if (!this.col) return;
@@ -609,7 +621,7 @@ const Store = {
         const id = this.dirty.values().next().value;
         this.dirty.delete(id);
         const data = this.docs[id];
-        try { if (data) await this.col.doc(id).set(data); }
+        try { if (data) await this.col.doc(id).set(JSON.parse(JSON.stringify(data))); } // sem campos undefined (o Firebase recusa)
         catch (e) {
           this.dirty.add(id);
           this.setSync(e && e.code === 'quota_exceeded' ? 'cheio' : 'erro');
@@ -628,6 +640,53 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', () => Store.cacheNow());
 
+/* ---------- Conta na nuvem (Firebase, só na versão site) ----------
+   Login por e-mail e senha. Os dados ficam em users/<uid>/docs/<doc> no Firestore, protegidos
+   pelas regras do projeto (cada pessoa só lê e grava os próprios). A cópia no aparelho continua. */
+const FIREBASE = null; // preenchido com a configuração do projeto (firebaseConfig)
+const Nuvem = {
+  user: null, auth: null, fs: null, iniciada: false,
+  configurada: () => !!(FIREBASE && FIREBASE.apiKey),
+  carregar(src) { return new Promise((ok, err) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = err; document.head.appendChild(s); }); },
+  async iniciar() {
+    if (this.iniciada) return; this.iniciada = true;
+    const v = 'https://www.gstatic.com/firebasejs/10.12.2/';
+    try {
+      await this.carregar(v + 'firebase-app-compat.js');
+      await Promise.all([this.carregar(v + 'firebase-auth-compat.js'), this.carregar(v + 'firebase-firestore-compat.js')]);
+    } catch (e) { this.iniciada = false; return; } // sem internet na primeira vez: tenta de novo na próxima abertura
+    firebase.initializeApp(FIREBASE);
+    this.auth = firebase.auth(); this.fs = firebase.firestore();
+    this.auth.onAuthStateChanged(u => {
+      this.user = u;
+      if (u) Store.ligar(this.fs.collection('users').doc(u.uid).collection('docs'));
+      else { Store.desligar(); Store.setSync('local'); }
+      App.queue(); if (Sheet.cfg && Sheet.cfg.conta) Sheet.refresh();
+    });
+  },
+  erro(e) {
+    const c = (e && e.code) || '';
+    return ({'auth/invalid-email': 'E-mail inválido.', 'auth/missing-password': 'Digite a senha.', 'auth/weak-password': 'A senha precisa ter pelo menos 6 caracteres.',
+      'auth/email-already-in-use': 'Já existe uma conta com esse e-mail. Toque em Entrar.', 'auth/invalid-credential': 'E-mail ou senha incorretos.',
+      'auth/wrong-password': 'E-mail ou senha incorretos.', 'auth/user-not-found': 'Não existe conta com esse e-mail. Toque em Criar conta.',
+      'auth/too-many-requests': 'Muitas tentativas. Espere alguns minutos e tente de novo.', 'auth/network-request-failed': 'Sem internet agora. Tente de novo quando conectar.'})[c]
+      || 'Não deu certo agora. Tente de novo em instantes.';
+  }
+};
+function contaHtml(st) {
+  if (!Nuvem.configurada() || window.claude) return '';
+  if (!Nuvem.auth) return `<div class="f"><span>Conta</span><p class="muted sm" style="font-weight:400">Conectando… (precisa de internet na primeira vez)</p></div>`;
+  if (Nuvem.user) return `<div class="f"><span>Conta</span>
+    <p class="note">Conectada como <b>${esc(Nuvem.user.email)}</b>. Seus dados ficam salvos na sua conta e aparecem em qualquer aparelho em que você entrar.</p>
+    <button class="btn ghost" data-act="ctSair">Sair da conta neste aparelho</button></div>`;
+  return `<div class="f"><span>Conta</span>
+    <p class="muted sm" style="font-weight:400">Entre para salvar seus dados na nuvem. O que já está neste aparelho vai junto para a conta.</p>
+    <input class="t" id="ct-email" type="email" inputmode="email" autocomplete="email" data-bind="email" value="${esc(st.email || '')}" placeholder="seu e-mail">
+    <input class="t" id="ct-senha" type="password" autocomplete="current-password" data-bind="senha" value="${esc(st.senha || '')}" placeholder="senha (mínimo 6 caracteres)">
+    ${st.ctErr ? `<p class="note warn">${esc(st.ctErr)}</p>` : ''}${st.ctOk ? `<p class="note">${esc(st.ctOk)}</p>` : ''}
+    <div class="row-btns"><button class="btn primary" data-act="ctEntrar" ${st.ctBusy ? 'disabled' : ''}>Entrar</button><button class="btn ghost" data-act="ctCriar" ${st.ctBusy ? 'disabled' : ''}>Criar conta</button></div>
+    <button class="btn link sm" data-act="ctSenha">Esqueci a senha</button></div>`;
+}
 /* ---------- Fotos ----------
    Na conta: arquivo enviado ao armazenamento do app ({id, url}). Sem conta: imagem reduzida
    guardada no próprio registro ({url: data:...}). */
@@ -663,9 +722,9 @@ const Fotos = {
         return {id: up.id, url: up.url};
       } catch (e) {}
     }
-    // ponytail: foto embutida no registro (~40 KB); limite de 256 KB por documento na conta
-    const c = await this.canvas(file, 560);
-    return {url: c.toDataURL('image/jpeg', .7)};
+    // ponytail: foto embutida no registro (~25 KB); a nuvem aceita até 1 MB por documento (coleção com ~35 fotos)
+    const c = await this.canvas(file, 480);
+    return {url: c.toDataURL('image/jpeg', .66)};
   },
   apagar(f) { if (f && f.id) this.assets().then(a => a && a.delete(f.id).catch(() => {})); }
 };
@@ -1057,6 +1116,21 @@ Object.assign(App.actions, {
   tmToggle: () => Timer.toggle(), tmRestart: () => Timer.restart(), tmAdd: () => Timer.add(15), tmStop: () => Timer.stop(),
   ajustes: () => openAjustes(),
   gptGuia: () => { Sheet.st.guia = !Sheet.st.guia; Sheet.refresh(); },
+  ctEntrar: async () => { const st = Sheet.st; st.ctErr = st.ctOk = ''; st.ctBusy = true; Sheet.refresh();
+    try { await Nuvem.auth.signInWithEmailAndPassword((st.email || '').trim(), st.senha || ''); st.senha = ''; toast('Conta conectada — sincronizando'); }
+    catch (e) { st.ctErr = Nuvem.erro(e); }
+    st.ctBusy = false; if (Sheet.st === st) Sheet.refresh(); },
+  ctCriar: async () => { const st = Sheet.st; st.ctErr = st.ctOk = ''; st.ctBusy = true; Sheet.refresh();
+    try { await Nuvem.auth.createUserWithEmailAndPassword((st.email || '').trim(), st.senha || ''); st.senha = ''; toast('Conta criada — seus dados estão subindo para a nuvem'); }
+    catch (e) { st.ctErr = Nuvem.erro(e); }
+    st.ctBusy = false; if (Sheet.st === st) Sheet.refresh(); },
+  ctSenha: async () => { const st = Sheet.st, email = (st.email || '').trim(); st.ctErr = st.ctOk = '';
+    if (!email) { st.ctErr = 'Digite seu e-mail acima e toque de novo em Esqueci a senha.'; return Sheet.refresh(); }
+    try { await Nuvem.auth.sendPasswordResetEmail(email); st.ctOk = 'Enviei um e-mail para você criar uma senha nova (confira também o spam).'; }
+    catch (e) { st.ctErr = Nuvem.erro(e); }
+    Sheet.refresh(); },
+  ctSair: () => Sheet.confirm({title: 'Sair da conta?', text: 'Seus dados continuam salvos na conta e também ficam neste aparelho. O que você mudar sem estar conectada não vai para a nuvem até entrar de novo.', ok: 'Sair',
+    onOk: async () => { try { await Nuvem.auth.signOut(); toast('Você saiu da conta'); } catch (e) { toast(Nuvem.erro(e)); } }}),
   ajImportar: d => {
     const abrir = {contas: ['contas', 'cImportar'], tarefas: ['hoje', 'tiAbrir'], colecao: ['colecao', 'piAbrir']}[d.k];
     Sheet.close(); App.go(abrir[0]);
@@ -1170,7 +1244,8 @@ function restaurar(txt) {
 
 /* ---------- Ajustes e backup ---------- */
 function openAjustes() {
-  Sheet.open({title: 'Ajustes', state: {nome: (Store.get('perfil') || {}).nome || '', backup: ''}, render: st => `
+  Sheet.open({title: 'Ajustes', conta: true, state: {nome: (Store.get('perfil') || {}).nome || '', backup: ''}, render: st => `
+    ${contaHtml(st)}
     <div class="f"><span>Aparência</span><div class="seg" role="group" aria-label="Aparência">${[['auto', 'Automático', 'sliders'], ['claro', 'Claro', 'sun'], ['escuro', 'Escuro', 'moon']]
       .map(([k, l, i]) => `<button aria-pressed="${((Store.get('perfil') || {}).tema || 'auto') === k}" data-act="ajTema" data-t="${k}">${ic(i)} ${l}</button>`).join('')}</div>
       <p class="muted sm" style="font-weight:400">Automático segue o tema do seu celular.</p></div>
