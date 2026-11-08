@@ -30,6 +30,7 @@
   --f-display:"Cormorant Garamond",Georgia,"Times New Roman",serif;
   --f-body:"Jost",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --r:24px;
+  --ilu-skin:#E6C1A6; --ilu-top:#6F8768; --ilu-leg:#4E4842; --ilu-hair:#6B4A35; --ilu-shoe:#B9A68E; --ilu-prop:#8C8275;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#1B1915; --surface:#25221D; --surface-2:#2F2B25; --sand:#4A4135; --sand-2:#5A4F40;
@@ -37,14 +38,16 @@
   --sage:#AFC2A2; --sage-2:#6F7F64; --sage-soft:#2D3428; --on-accent:#1B1915;
   --warn:#E2B66A; --warn-soft:#3A2F1D; --ok:#A9CB97; --ok-soft:#28331F; --danger:#E9907F;
   --g-bracos:#D3A189; --g-pernas:#A8BA93; --g-gluteos:#E0B2A0; --g-abdomen:#D8C189; --g-cardio:#9DBAB7;
-  --shadow:0 1px 0 rgba(255,255,255,.03); --scrim:rgba(0,0,0,.6); color-scheme:dark}}
+  --shadow:0 1px 0 rgba(255,255,255,.03); --scrim:rgba(0,0,0,.6); color-scheme:dark;
+  --ilu-skin:#DDB497; --ilu-top:#9DB58F; --ilu-leg:#A1978A; --ilu-hair:#C79C78; --ilu-shoe:#E3D5C1; --ilu-prop:#A99F90}}
 :root[data-theme="dark"]{
   --bg:#1B1915; --surface:#25221D; --surface-2:#2F2B25; --sand:#4A4135; --sand-2:#5A4F40;
   --ink:#EFE8DC; --muted:#A99F90; --line:#3A342C;
   --sage:#AFC2A2; --sage-2:#6F7F64; --sage-soft:#2D3428; --on-accent:#1B1915;
   --warn:#E2B66A; --warn-soft:#3A2F1D; --ok:#A9CB97; --ok-soft:#28331F; --danger:#E9907F;
   --g-bracos:#D3A189; --g-pernas:#A8BA93; --g-gluteos:#E0B2A0; --g-abdomen:#D8C189; --g-cardio:#9DBAB7;
-  --shadow:0 1px 0 rgba(255,255,255,.03); --scrim:rgba(0,0,0,.6); color-scheme:dark}
+  --shadow:0 1px 0 rgba(255,255,255,.03); --scrim:rgba(0,0,0,.6); color-scheme:dark;
+  --ilu-skin:#DDB497; --ilu-top:#9DB58F; --ilu-leg:#A1978A; --ilu-hair:#C79C78; --ilu-shoe:#E3D5C1; --ilu-prop:#A99F90}
 
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
@@ -400,6 +403,15 @@ textarea.t{resize:vertical;min-height:70px}
 body.has-timer #toast{bottom:calc(166px + env(safe-area-inset-bottom,0px))}
 
 .reps-in,.tile b,.ring-p span,.tring span,.sum-grid b,.cal-day .d b,.ord,.entry .date,.tmark,.cmp figcaption,h1,h2{font-variant-numeric:lining-nums tabular-nums}
+.demo.ilu{background:linear-gradient(180deg,var(--surface-2),color-mix(in srgb,var(--surface-2) 70%,var(--sand)))}
+.demo.ilu svg,.th.ilu svg,.thumb.ilu svg{width:100%;height:100%;display:block}
+.th.ilu,.thumb.ilu,.tb.ilu{background:var(--surface-2);overflow:hidden;display:block}
+.thumbs .tb{width:46px;height:46px;border-radius:12px;flex:none}
+.tb.ilu svg{width:100%;height:100%;display:block}
+.ilu polyline,.ilu line{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.ilu .sk{stroke:var(--ilu-skin)} .ilu .lg{stroke:var(--ilu-leg)} .ilu .tp{stroke:var(--ilu-top)} .ilu .sh{stroke:var(--ilu-shoe)}
+.ilu .pr{stroke:var(--ilu-prop)} .ilu .fl{stroke:var(--line)} .ilu .far{opacity:.5}
+.ilu .fsk{fill:var(--ilu-skin)} .ilu .fhr{fill:var(--ilu-hair)} .ilu .flg{fill:var(--ilu-leg)} .ilu .ftp{fill:var(--ilu-top)} .ilu .fpr{fill:var(--ilu-prop)}
 .box[aria-checked="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .tag .ic{width:14px;height:14px}
 .money{font:500 1.15rem var(--f-display);font-variant-numeric:lining-nums tabular-nums;white-space:nowrap}
@@ -1254,11 +1266,106 @@ L('Rope_Jumping','Pular corda','cardio',['Panturrilhas','Ombros','Condicionament
 L('Star_Jump','Salto estrela','cardio',['Pernas','Ombros','Condicionamento'],1,'Peso do corpo',3,12,'reps',45,'Agache parcialmente, com os pés juntos e os braços próximos ao corpo.',['Salte abrindo braços e pernas no ar, formando uma estrela.','Feche braços e pernas antes de aterrissar.','Aterrisse suavemente com os joelhos dobrados.','Repita em sequência.'],'Aterrissagem macia, com os joelhos alinhados aos pés.',['Aterrissar com as pernas esticadas','Joelhos para dentro na queda','Arquear as costas']);
 L('Rowing_Stationary','Remo ergométrico','cardio',['Costas','Pernas','Braços','Condicionamento'],2,'Remo ergométrico',1,15,'min',0,'Sente-se com os pés presos nos apoios, joelhos dobrados e braços estendidos segurando a manopla.',['Empurre primeiro com as pernas.','Em seguida incline levemente o tronco para trás.','Por último puxe a manopla até o abdômen.','Volte na ordem inversa: braços, tronco, pernas.'],'Na ida: pernas, tronco, braços. Na volta, o contrário.',['Puxar só com os braços','Arredondar as costas','Dobrar os joelhos antes de os braços passarem']);
 
+/* =====================================================================
+   ILUSTRAÇÕES ANIMADAS (desenhadas no próprio app, figura feminina em traço)
+   Cada exercício = duas posições (a: início, b: fim) da mesma figura; o app anima entre elas.
+   Ângulos em graus: 0 = para baixo, 90 = para a frente (direita), 180 = para cima.
+   t = inclinação do tronco (0 = em pé). h = posição do quadril. af/an = braço de trás/da frente
+   [braço, antebraço]; lf/ln = perna de trás/da frente [coxa, canela]; fo = giro do pé (ponta).
+   ===================================================================== */
+const Ilu = {
+  L: {tr: 34, hd: 13.5, ua: 17, fa: 16, th: 21, sh: 21, ft: 7},
+  pts(p) {
+    const r = Math.PI / 180, L = this.L, v = (a, l) => [Math.sin(a * r) * l, Math.cos(a * r) * l], add = (a, b) => [a[0] + b[0], a[1] + b[1]];
+    const H = p.h, u = [Math.sin(p.t * r), -Math.cos(p.t * r)], S = add(H, [u[0] * L.tr, u[1] * L.tr]), Hd = add(S, [u[0] * L.hd, u[1] * L.hd]);
+    const arm = a => { const E = add(S, v(a[0], L.ua)); return [S, E, add(E, v(a[1], L.fa))]; };
+    const leg = b => { const K = add(H, v(b[0], L.th)), A = add(K, v(b[1], L.sh)); return [H, K, A, add(A, v(b[1] + 90 + (p.fo || 0), L.ft))]; };
+    return {H, S, Hd, u, af: arm(p.af), an: arm(p.an), lf: leg(p.lf), ln: leg(p.ln)};
+  },
+  mix(a, b, k) {
+    if (typeof a === 'number') return a + ((b ?? a) - a) * k;
+    if (Array.isArray(a)) return a.map((x, i) => this.mix(x, b && b[i], k));
+    const o = {}; for (const key in a) o[key] = this.mix(a[key], b && b[key], k); return o;
+  },
+  svg(key, k) {
+    const D = ILU[key], P = this.pts(this.mix(D.a, {...D.a, ...D.b}, k));
+    const pl = (q, cls, w) => `<polyline class="${cls}" stroke-width="${w}" points="${q.map(x => x[0].toFixed(1) + ',' + x[1].toFixed(1)).join(' ')}"/>`;
+    const c = (q, r, cls) => `<circle class="${cls}" cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="${r}"/>`;
+    const perna = (l, x) => `<g class="${x}">${pl(l.slice(0, 3), 'lg', 8.5)}${pl(l.slice(2), 'sh', 4.6)}</g>`;
+    const braco = (a, x) => `<g class="${x}">${pl(a, 'sk', 5.4)}</g>`;
+    const tipo = D.mao === 'plateS' ? 'plate' : D.mao;
+    const mao = q => ({db: `<rect class="fpr" x="${(q[0] - 6.5).toFixed(1)}" y="${(q[1] - 2.6).toFixed(1)}" width="13" height="5.2" rx="2"/>`,
+      plate: `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="9" fill="none" class="pr" stroke-width="3"/>${c(q, 2, 'fpr')}`,
+      kb: c(q, 4.2, 'fpr'), rope: `<line class="pr" stroke-width="2.4" x1="${q[0]}" y1="${q[1]}" x2="${q[0] + 1}" y2="${q[1] + 7}"/>`}[tipo] || '');
+    const back = [P.u[1], -P.u[0]], bun = D.front ? [P.Hd[0], P.Hd[1] - 7.5] : [P.Hd[0] + back[0] * 6.5 + P.u[0] * 2, P.Hd[1] + back[1] * 6.5 + P.u[1] * 2];
+    const pescoco = [P.S, [P.S[0] + P.u[0] * 6, P.S[1] + P.u[1] * 6]];
+    return `<line class="fl" stroke-width="2" x1="0" y1="104.5" x2="160" y2="104.5"/>${D.fundo ? D.fundo(P) : ''}
+      ${braco(P.af, D.front ? '' : 'far')}${D.maoF !== false ? `<g class="${D.front ? '' : 'far'}">${mao(P.af[2])}</g>` : ''}${perna(P.lf, D.front ? '' : 'far')}
+      ${pl(pescoco, 'sk', 4.5)}${pl([P.H, P.S], 'tp', 12.5)}${c(P.H, 6.4, 'flg')}${c(bun, 4.3, 'fhr')}${c(P.Hd, 7.3, 'fsk')}
+      ${perna(P.ln, '')}${c(P.S, 4.4, 'ftp')}${braco(P.an, '')}${mao(D.mao === 'plateS' ? P.S : P.an[2])}${D.frente ? D.frente(P) : ''}`;
+  }
+};
+const fx = {
+  bench: (x, y, w) => `<rect class="fpr" opacity=".45" x="${x}" y="${y}" width="${w}" height="6" rx="2"/><line class="pr" stroke-width="2.5" x1="${x + 5}" y1="${y + 6}" x2="${x + 5}" y2="104"/><line class="pr" stroke-width="2.5" x1="${x + w - 5}" y1="${y + 6}" x2="${x + w - 5}" y2="104"/>`,
+  seat: (x, y, w, bx, by, bh) => `<rect class="fpr" opacity=".45" x="${x}" y="${y}" width="${w}" height="6" rx="2"/>${bh ? `<rect class="fpr" opacity=".45" x="${bx}" y="${by}" width="6" height="${bh}" rx="2"/>` : ''}<line class="pr" stroke-width="2.5" x1="${x + w / 2}" y1="${y + 6}" x2="${x + w / 2}" y2="104"/>`,
+  mat: () => `<rect class="fpr" opacity=".3" x="18" y="102.5" width="124" height="3" rx="1.5"/>`,
+  post: (x) => `<rect class="fpr" opacity=".4" x="${x}" y="4" width="7" height="100" rx="2"/>`,
+  cabo: (a, b) => `<line class="pr" stroke-width="1.3" x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}"/>`,
+  pad: q => `<circle class="fpr" cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="3.6"/>`
+};
+const ILU = {};
+const I = (k, a, b, o = {}) => { ILU[k] = {a, b, ...o}; };
+const pose = (h, t, af, an, lf, ln, fo = 0) => ({h, t, af, an, lf, ln, fo});
+I('Barbell_Hip_Thrust', pose([74, 95], -65, [65, 65], [65, 65], [126, 17], [126, 17]), pose([78, 81], -90, [90, 90], [90, 90], [90, 0], [90, 0]), {mao: 'plate', maoF: false, fundo: () => fx.bench(14, 84, 34)});
+I('Split_Squat_with_Dumbbells', pose([80, 59], 0, [3, 3], [3, 3], [-25, -30], [20, 0]), pose([80, 79], 5, [3, 3], [3, 3], [-10, -80], [85, 0]), {mao: 'db'});
+I('Romanian_Deadlift', pose([78, 60], 0, [0, 0], [0, 0], [3, -3], [3, -3]), pose([70, 62], 80, [0, 0], [0, 0], [12, -6], [12, -6]), {mao: 'plate', maoF: false});
+I('Thigh_Abductor', pose([80, 64], 0, [-25, -5], [25, 5], [-8, -2], [8, 2]), pose([80, 64], 0, [-25, -5], [25, 5], [-38, -12], [38, 12]), {front: true, fundo: () => `<rect class="fpr" opacity=".3" x="64" y="20" width="32" height="46" rx="4"/>` + fx.seat(58, 64, 44)});
+I('One-Legged_Cable_Kickback', pose([72, 60], 18, [75, 85], [75, 85], [0, 0], [6, -4]), pose([72, 60], 22, [75, 85], [75, 85], [0, 0], [-50, -40]), {fundo: P => fx.post(120) + fx.cabo([120, 96], P.ln[2])});
+I('Plank', pose([80, 90], 80, [0, 90], [0, 90], [-80, -80], [-80, -80]), pose([80, 88.5], 81, [0, 90], [0, 90], [-80, -80], [-80, -80]), {fundo: fx.mat});
+I('Reverse_Crunch', pose([80, 97], -90, [90, 90], [90, 90], [180, 90], [180, 90]), pose([78, 90], -102, [95, 95], [95, 95], [215, 150], [215, 150]), {fundo: fx.mat});
+I('Wide-Grip_Lat_Pulldown', pose([80, 72], -8, [168, 178], [168, 178], [88, 0], [88, 0]), pose([80, 72], -14, [-25, 165], [-25, 165], [88, 0], [88, 0]),
+  {fundo: P => fx.seat(62, 74, 34) + `<rect class="fpr" opacity=".45" x="96" y="62" width="11" height="5" rx="2"/>` + fx.cabo([80, 2], P.an[2]),
+   frente: P => `<line class="pr" stroke-width="3" x1="${(P.an[2][0] - 16).toFixed(1)}" y1="${P.an[2][1].toFixed(1)}" x2="${(P.an[2][0] + 16).toFixed(1)}" y2="${P.an[2][1].toFixed(1)}"/>`});
+I('Seated_Cable_Rows', pose([58, 90], 12, [88, 90], [88, 90], [78, 98], [78, 98]), pose([58, 90], -6, [-15, 85], [-15, 85], [78, 98], [78, 98]),
+  {fundo: P => fx.bench(30, 92, 56) + `<rect class="fpr" opacity=".45" x="104" y="80" width="5" height="24" rx="2"/>` + fx.cabo(P.an[2], [150, P.an[2][1]]) + `<rect class="fpr" opacity=".4" x="148" y="50" width="8" height="54" rx="2"/>`,
+   frente: P => `<rect class="fpr" x="${(P.an[2][0] - 1.5).toFixed(1)}" y="${(P.an[2][1] - 5).toFixed(1)}" width="3" height="10" rx="1.5"/>`});
+I('Dumbbell_Shoulder_Press', pose([80, 72], 0, [100, 180], [100, 180], [88, 0], [88, 0]), pose([80, 72], 0, [172, 178], [172, 178], [88, 0], [88, 0]), {mao: 'db', fundo: () => fx.seat(64, 74, 34, 64, 30, 44)});
+I('Side_Lateral_Raise', pose([80, 60], 0, [-14, -12], [14, 12], [-4, -2], [4, 2]), pose([80, 60], 0, [-86, -82], [86, 82], [-4, -2], [4, 2]), {front: true, mao: 'db'});
+I('Dumbbell_Bicep_Curl', pose([80, 60], 0, [-4, -4], [4, 4], [-3, -3], [3, 3]), pose([80, 60], 0, [-4, 160], [4, 165], [-3, -3], [3, 3]), {mao: 'db'});
+I('Triceps_Pushdown_-_Rope_Attachment', pose([78, 60], 10, [6, 120], [6, 120], [-3, -3], [3, 3]), pose([78, 60], 10, [6, 10], [6, 10], [-3, -3], [3, 3]), {mao: 'rope', maoF: false, fundo: P => fx.post(124) + fx.cabo([123, 10], P.an[2])});
+I('Crunches', pose([84, 97], -90, [90, -90], [90, -90], [150, 21], [150, 21]), pose([84, 97], -58, [115, -65], [115, -65], [150, 21], [150, 21]), {fundo: fx.mat});
+I('Russian_Twist', pose([80, 94], -32, [70, 55], [70, 55], [130, 80], [130, 80]), pose([80, 94], -44, [10, 40], [10, 40], [130, 80], [130, 80]), {mao: 'kb', maoF: false, fundo: fx.mat});
+I('Barbell_Squat', pose([80, 60], 0, [-40, 165], [-40, 165], [0, 0], [0, 0]), pose([68, 82], 35, [-5, -160], [-5, -160], [80, -20], [80, -20]), {mao: 'plateS', maoF: false});
+I('Leg_Press', pose([60, 86], -55, [60, 60], [60, 60], [150, 100], [150, 100]), pose([60, 86], -55, [60, 60], [60, 60], [124, 124], [124, 124]),
+  {fundo: () => `<polyline class="pr" stroke-width="7" opacity=".45" points="64,92 26,64"/><line class="pr" stroke-width="2" x1="70" y1="104" x2="140" y2="30"/>`,
+   frente: P => { const A = P.ln[2]; return `<line class="pr" stroke-width="4" x1="${(A[0] - 6).toFixed(1)}" y1="${(A[1] - 9).toFixed(1)}" x2="${(A[0] + 9).toFixed(1)}" y2="${(A[1] + 6).toFixed(1)}"/>`; }});
+I('Leg_Extensions', pose([72, 72], -10, [15, 60], [15, 60], [90, 0], [90, 0]), pose([72, 72], -10, [15, 60], [15, 60], [90, 82], [90, 82]), {fundo: () => fx.seat(56, 74, 32, 52, 36, 40), frente: P => fx.pad(P.ln[2])});
+I('Lying_Leg_Curls', pose([76, 80], 90, [25, 60], [25, 60], [-90, -90], [-90, -90]), pose([76, 80], 90, [25, 60], [25, 60], [-90, -178], [-90, -178]), {fundo: () => fx.bench(38, 84, 92), frente: P => fx.pad(P.ln[2])});
+I('Stiff-Legged_Dumbbell_Deadlift', pose([78, 60], 0, [0, 0], [0, 0], [2, -2], [2, -2]), pose([72, 61], 84, [0, 0], [0, 0], [10, -4], [10, -4]), {mao: 'db'});
+I('Standing_Calf_Raises', pose([80, 56], 0, [8, 8], [8, 8], [0, 0], [0, 0], 0), pose([80, 50], 0, [8, 8], [8, 8], [0, 0], [0, 0], -50), {fundo: () => `<rect class="fpr" opacity=".45" x="60" y="98" width="40" height="6.5" rx="2"/>`});
+I('Side_Bridge', pose([80, 96.5], 76, [178, 175], [0, 90], [-78, -78], [-78, -78]), pose([80, 94.6], 77, [180, 178], [0, 90], [-77, -77], [-77, -77]), {fundo: fx.mat});
+I('Flat_Bench_Lying_Leg_Raise', pose([80, 80], -90, [-80, -20], [-80, -20], [95, 90], [95, 90]), pose([80, 80], -90, [-80, -20], [-80, -20], [172, 172], [172, 172]), {fundo: () => fx.bench(20, 84, 70)});
+I('Walking_Treadmill', pose([78, 58], 4, [25, 60], [-25, -5], [-22, -30], [24, 8]), pose([78, 58], 4, [-25, -5], [25, 60], [24, 8], [-22, -30]),
+  {fundo: () => `<rect class="fpr" opacity=".4" x="34" y="99" width="96" height="6" rx="3"/><line class="pr" stroke-width="3" x1="128" y1="100" x2="120" y2="40"/><line class="pr" stroke-width="3" x1="120" y1="40" x2="104" y2="44"/>`});
+I('Mountain_Climbers', pose([75, 80], 72, [4, 4], [4, 4], [-72, -72], [50, -60]), pose([75, 80], 72, [4, 4], [4, 4], [50, -60], [-72, -72]), {fundo: fx.mat});
+I('Cross-Body_Crunch', pose([84, 97], -90, [-110, 170], [-110, 170], [150, 21], [150, 21]), pose([84, 97], -60, [-80, 170], [120, -40], [150, 21], [150, 21]), {fundo: fx.mat});
+
+/* anima as ilustrações visíveis na tela (vai e volta a cada ~2,8 s) */
+const iluMov = !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+(function animar(ts) {
+  const els = document.querySelectorAll('.demo.ilu svg');
+  if (els.length) { const k = iluMov ? (1 - Math.cos((ts || 0) / 2800 * 2 * Math.PI)) / 2 : 1; els.forEach(s => { s.innerHTML = Ilu.svg(s.dataset.k, k); }); }
+  requestAnimationFrame(animar);
+})();
+const thumb = (k, cls = 'th') => ILU[k] ? `<span class="${cls} ilu"><svg viewBox="12 0 136 110" aria-hidden="true">${Ilu.svg(k, 1)}</svg></span>`
+  : `<img class="${cls}" src="${imgLib(k)}" alt="" loading="lazy">`;
+
 const NIVEL = ['', 'Iniciante', 'Intermediário', 'Avançado'];
 const lvl = n => `<span class="lvl" aria-label="Nível ${NIVEL[n]}">${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
 const imgLib = (k, f = 0) => `img/${k}-${f}.jpg`;
 function demo(k, grupo) {
   if (!k || !LIB[k]) return `<div class="demo none">${ic(grupo || 'dumbbell')}</div>`;
+  if (ILU[k]) return `<div class="demo ilu"><svg viewBox="0 0 160 110" data-k="${k}" role="img" aria-label="Animação: ${esc(LIB[k].n)}">${Ilu.svg(k, 0)}</svg><span class="badge">ANIMAÇÃO</span></div>`;
   return `<div class="demo"><img src="${imgLib(k, 0)}" alt="Posição inicial: ${esc(LIB[k].n)}"><img class="f1" src="${imgLib(k, 1)}" alt="Posição final: ${esc(LIB[k].n)}">
     <span class="badge">DEMO</span><span class="credit">Free Exercise DB</span></div>`;
 }
@@ -1291,7 +1398,7 @@ const T = {
 };
 const grpDots = gs => gs.map(g => `<span class="tag"><span class="dot" style="--c:var(--g-${g})"></span>${G[g] ? G[g].nome : g}</span>`).join('');
 const fmtRest = s => s >= 60 ? `${Math.floor(s / 60)}min${s % 60 ? ' ' + (s % 60) + 's' : ''}` : `${s}s`;
-const exThumb = e => e && e.libId && LIB[e.libId] ? `<img src="${imgLib(e.libId)}" alt="" loading="lazy">` : `<span>${ic(e ? e.grupo : 'dumbbell')}</span>`;
+const exThumb = e => e && e.libId && LIB[e.libId] ? `${thumb(e.libId, 'tb')}` : `<span>${ic(e ? e.grupo : 'dumbbell')}</span>`;
 
 /* Sua rotina: 4 dias (Seg glúteos, Qua superiores, Sex pernas, Sáb cardio), abdômen em todos */
 const METAS_PADRAO = {musculacao: 3, abdomen: 3, cardio: 1};
@@ -1348,7 +1455,7 @@ function home() {
     return `<section class="card sage"><div class="hero"><div class="grow"><p class="eyebrow">${ic('dumbbell')} Treino em andamento</p><h2>${esc(s.ativa.nome)}</h2>
       <p class="sm muted">${p.feitas} de ${p.total} séries · agora: ${esc(it ? it.nome : '')}</p>
       <button class="btn primary sm" style="margin-top:6px" data-act="go" data-r="sessao">Continuar ${ic('next')}</button></div>
-      ${it && it.libId ? `<img class="thumb" src="${imgLib(it.libId)}" alt="">` : ''}</div></section>`;
+      ${it && it.libId ? `${thumb(it.libId, 'thumb')}` : ''}</div></section>`;
   }
   const hoje = new Date().getDay();
   const prog = s.treinos.filter(t => t.dias.includes(hoje));
@@ -1364,7 +1471,7 @@ function home() {
     return `<section class="card soft"><div class="hero"><div class="grow"><p class="eyebrow">${ic('dumbbell')} Seu treino de hoje</p><h2>${esc(t.nome)}</h2>
       <p class="sm muted">${plural(t.exercicios.length, 'exercício')}${min ? ` · ~${min} min` : ''}</p>
       ${done ? `<p class="sm" style="color:var(--ok)">${ic('check')} Feito · ${fmtDur(done.fim - done.inicio)}</p>` : `<button class="btn primary sm" style="margin-top:6px" data-act="tIniciar" data-id="${t.id}">Começar treino ${ic('next')}</button>`}</div>
-      ${primeiro && primeiro.libId ? `<img class="thumb" src="${imgLib(primeiro.libId)}" alt="">` : ''}</div></section>`;
+      ${primeiro && primeiro.libId ? `${thumb(primeiro.libId, 'thumb')}` : ''}</div></section>`;
   }).join('');
 }
 function progresso() {
@@ -1424,7 +1531,7 @@ function viewFicha() {
       <p class="eyebrow" style="margin:0">Minha ficha</p><button class="icon-btn" data-act="fichaEditar" data-id="${t.id}" aria-label="Editar ficha">${ic('pencil')}</button></header>
       <div class="stack">${topo}<p class="sm muted" style="margin-top:6px">${plural(n, 'exercício')}${min ? ` · ~${min} min` : ''}</p></div>
       <div class="list">${exs.map(e => `<button class="item" ${e.libId && LIB[e.libId] ? `data-act="sComo" data-k="${e.libId}"` : 'style="cursor:default"'}>
-        ${e.libId && LIB[e.libId] ? `<img class="th" src="${imgLib(e.libId)}" alt="">` : `<span class="th" style="display:grid;place-items:center">${ic(e.grupo)}</span>`}
+        ${e.libId && LIB[e.libId] ? `${thumb(e.libId)}` : `<span class="th" style="display:grid;place-items:center">${ic(e.grupo)}</span>`}
         <span class="grow"><h3>${esc(e.nome)}</h3><p class="sm muted">${e.series} × ${e.reps} ${UN[e.unid]}${e.descanso ? ` · ${fmtRest(e.descanso)}` : ''}</p>${e.obs ? `<p class="obs">${esc(e.obs)}</p>` : ''}</span></button>`).join('')
         || `<div class="card empty"><p class="muted sm">Ficha vazia. Toque no lápis para adicionar exercícios.</p></div>`}</div>
       <button class="btn primary block" data-act="tIniciar" data-id="${t.id}" ${n ? '' : 'disabled'}>Iniciar treino ${ic('next')}</button></div>`;
@@ -1436,7 +1543,7 @@ function viewFicha() {
     <div class="list" data-sort-act="fiMove">${exs.map((e, i) => `<div class="item" data-sort style="cursor:default;padding:10px 8px 10px 2px">
       <button class="handle" aria-label="Arrastar para mudar a ordem">${ic('grip')}</button>
       <button style="all:unset;display:flex;gap:12px;align-items:center;flex:1;min-width:0;cursor:pointer" data-act="fiEdit" data-id="${e.id}" aria-label="Editar ${esc(e.nome)}">
-        ${e.libId && LIB[e.libId] ? `<img class="th" src="${imgLib(e.libId)}" alt="">` : `<span class="th" style="display:grid;place-items:center">${ic(e.grupo)}</span>`}
+        ${e.libId && LIB[e.libId] ? `${thumb(e.libId)}` : `<span class="th" style="display:grid;place-items:center">${ic(e.grupo)}</span>`}
         <span class="grow"><h3>${esc(e.nome)}</h3><p class="sm muted">${e.series} × ${e.reps} ${UN[e.unid]} · descanso ${e.descanso ? fmtRest(e.descanso) : 'livre'}</p>${e.obs ? `<p class="obs">${esc(e.obs)}</p>` : ''}</span></button>
       <button class="icon-btn sm" data-act="fiTirar" data-id="${e.id}" aria-label="Tirar ${esc(e.nome)} da ficha">${ic('x')}</button></div>`).join('')
       || `<div class="card empty"><p class="muted sm">Ficha vazia. Adicione exercícios abaixo.</p></div>`}</div>
@@ -1449,7 +1556,7 @@ function fiPicker(st) {
   const xs = Object.values(LIB).filter(x => (!st.g || x.g === st.g) && (!q || semAcento(x.n + ' ' + x.m.join(' ')).includes(q)));
   return `<input class="t" id="fi-q" data-bind="q" value="${esc(st.q || '')}" placeholder="Buscar exercício" autocomplete="off">
     <div class="chips wrap">${[{id: '', nome: 'Todos'}, ...GRUPOS].map(g => `<button class="chip" aria-pressed="${(st.g || '') === g.id}" data-act="fiG" data-g="${g.id}">${g.nome}</button>`).join('')}</div>
-    <div class="picklist" id="fi-res">${xs.map(x => `<button class="pick" data-act="fiAddK" data-k="${x.k}"><img class="th" style="width:44px;height:44px;border-radius:10px" src="${imgLib(x.k)}" alt=""><span class="grow">${esc(x.n)}<br><small style="margin:0">${x.s}×${x.r} ${UN[x.u]}</small></span>${ja.has(x.k) ? '<small>já está</small>' : ic('plus')}</button>`).join('') || '<p class="muted sm">Nada encontrado.</p>'}</div>`;
+    <div class="picklist" id="fi-res">${xs.map(x => `<button class="pick" data-act="fiAddK" data-k="${x.k}"><span style="width:44px;height:44px;border-radius:10px;overflow:hidden;flex:none">${thumb(x.k)}</span><span class="grow">${esc(x.n)}<br><small style="margin:0">${x.s}×${x.r} ${UN[x.u]}</small></span>${ja.has(x.k) ? '<small>já está</small>' : ic('plus')}</button>`).join('') || '<p class="muted sm">Nada encontrado.</p>'}</div>`;
 }
 document.addEventListener('input', e => { if (e.target.id === 'fi-q' && Sheet.st) { const r = $('#fi-res'); if (r) { const tmp = document.createElement('div'); tmp.innerHTML = fiPicker(Sheet.st); r.innerHTML = tmp.querySelector('#fi-res').innerHTML; } } });
 
@@ -1467,7 +1574,7 @@ function viewBiblioteca(s) {
   return `${seg}<div class="between"><button class="btn link" data-act="libGrupo" data-g="">${ic('back')} Grupos</button><span class="tag"><span class="dot" style="--c:var(--g-${g.id})"></span>${g.nome}</span></div>
     <div class="list">${xs.map(libItem).join('')}</div>`;
 }
-const libItem = x => `<button class="item" data-act="libAbrir" data-k="${x.k}"><img class="th" src="${imgLib(x.k)}" alt="" loading="lazy">
+const libItem = x => `<button class="item" data-act="libAbrir" data-k="${x.k}">${thumb(x.k)}
   <span class="grow"><h3>${esc(x.n)}</h3><p class="sm muted">${esc(x.m.slice(0, 2).join(' · '))}</p><p class="tag">${lvl(x.nv)} ${NIVEL[x.nv]} · ${esc(x.eq)}</p></span>${ic('next')}</button>`;
 const semAcento = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 function libResultados() {
@@ -1486,7 +1593,7 @@ function viewMeus(s) {
     const xs = s.exercicios.filter(e => e.grupo === g.id);
     if (!xs.length) return '';
     return `<p class="grp-title"><span class="dot" style="--c:var(--g-${g.id})"></span>${g.nome}</p><div class="list">${xs.map(e => `
-      <button class="item" data-act="tExEditar" data-id="${e.id}">${e.libId && LIB[e.libId] ? `<img class="th" src="${imgLib(e.libId)}" alt="" loading="lazy">` : `<span class="th" style="display:grid;place-items:center">${ic(e.grupo)}</span>`}
+      <button class="item" data-act="tExEditar" data-id="${e.id}">${e.libId && LIB[e.libId] ? `${thumb(e.libId)}` : `<span class="th" style="display:grid;place-items:center">${ic(e.grupo)}</span>`}
       <span class="grow"><h3>${esc(e.nome)}</h3><p class="sm muted">${e.series} × ${e.reps} ${UN[e.unid]}${e.descanso ? ` · descanso ${fmtRest(e.descanso)}` : ''}</p>${e.obs ? `<p class="obs">${esc(e.obs)}</p>` : ''}</span>${ic('pencil')}</button>`).join('')}</div>`;
   }).join('');
   return `<button class="btn primary block" data-act="tExNovo">${ic('plus')} Criar exercício próprio</button>
@@ -1509,7 +1616,7 @@ function viewExercicio() {
 }
 function addForm(st) {
   const s = T.st(), x = LIB[st.k];
-  return `<div class="row"><img class="th" src="${imgLib(x.k)}" alt=""><div class="grow"><h3>${esc(x.n)}</h3><p class="sm muted">Personalize antes de adicionar</p></div></div>
+  return `<div class="row">${thumb(x.k)}<div class="grow"><h3>${esc(x.n)}</h3><p class="sm muted">Personalize antes de adicionar</p></div></div>
     <div class="grid3"><label class="f">Séries<input class="t" id="la-s" type="number" inputmode="numeric" min="1" data-bind="series" value="${esc(st.series)}"></label>
       <label class="f">${st.unid === 'reps' ? 'Repetições' : 'Tempo'}<input class="t" id="la-r" type="number" inputmode="numeric" min="1" data-bind="reps" value="${esc(st.reps)}"></label>
       <label class="f">Descanso (s)<input class="t" id="la-d" type="number" inputmode="numeric" min="0" step="5" data-bind="descanso" value="${esc(st.descanso)}"></label></div>
@@ -1845,7 +1952,7 @@ App.module({
     sLista: () => {
       const a = T.st().ativa;
       Sheet.open({title: 'Exercícios do treino', render: () => `<div class="list">${a.itens.map((it, i) => { const f = it.series.filter(x => x.feito).length;
-        return `<button class="item" data-act="sIrFechar" data-i="${i}">${it.libId && LIB[it.libId] ? `<img class="th" src="${imgLib(it.libId)}" alt="">` : `<span class="th" style="display:grid;place-items:center">${ic(it.grupo)}</span>`}
+        return `<button class="item" data-act="sIrFechar" data-i="${i}">${it.libId && LIB[it.libId] ? `${thumb(it.libId)}` : `<span class="th" style="display:grid;place-items:center">${ic(it.grupo)}</span>`}
           <span class="grow"><h3>${esc(it.nome)}</h3><p class="sm muted">${f}/${it.series.length} séries${i === a.aberto ? ' · atual' : ''}</p></span>${f === it.series.length ? `<span style="color:var(--ok)">${ic('check')}</span>` : ''}</button>`; }).join('')}</div>
         <div class="row-btns"><button class="btn ghost" data-act="sDescartar">Descartar treino</button><button class="btn primary" data-act="sFinalizar">Finalizar treino</button></div>`});
     },
