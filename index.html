@@ -529,7 +529,7 @@ const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e)
    "cabelo", "cabelo-evo-<id>", "perfil"). Na conta: data/users/<id>/<doc> (privado).
    Espelhado no navegador: abre na hora e funciona sem conexão. */
 const CACHE = 'meu-ritual:v1';
-const APP_VERSAO = '10'; // o montar_site.py troca pelo número da versão do site
+const APP_VERSAO = '11'; // o montar_site.py troca pelo número da versão do site
 /* IndexedDB: guarda tudo no aparelho com bem mais espaço que o localStorage (fotos incluídas) */
 const IDB = {
   db: null,
@@ -2712,11 +2712,11 @@ function lerContas(txt) {
     const valor = parseValor(pick[2].includes(',') || /\.\d{3}/.test(pick[2]) ? pick[2] : pick[2].replace('.', ','));
     if (!valor) return;
     resto = resto.replace(pick[0], ' ');
-    const unica = /\b(única|unica|avulsa|parcela)\b/i.test(resto);
-    const nome = resto.replace(/\b(mensal|todo m[eê]s|única|unica|avulsa|vencimento|venc\.?|valor|r\$)\b/gi, ' ').replace(/[;,\t|]+/g, ' ').replace(/\s+/g, ' ').replace(/^[\s\-–:]+|[\s\-–:]+$/g, '').trim();
+    const unica = /(^|[\s;,])(única|unica|avulsa|parcela)(?=$|[\s;,])/i.test(resto), paga = /(^|[\s;,])(paga|pago)(?=$|[\s;,])/i.test(resto);
+    const nome = resto.replace(/(^|[\s;,])(mensal|todo m[eê]s|única|unica|avulsa|paga|pago|vencimento|venc\.?|valor|r\$)(?=$|[\s;,])/gi, ' ').replace(/[;,\t|]+/g, ' ').replace(/\s+/g, ' ').replace(/^[\s\-–:]+|[\s\-–:]+$/g, '').trim();
     if (!nome) return;
     const cat = (CAT_PALAVRAS.find(([re]) => re.test(nome)) || [0, 'outros'])[1];
-    out.push({nome: nome.charAt(0).toUpperCase() + nome.slice(1), valor, venc: venc || dkey(hoje), semData: !venc, recorrente: !unica, cat, obs, sel: true});
+    out.push({nome: nome.charAt(0).toUpperCase() + nome.slice(1), valor, venc: venc || dkey(hoje), semData: !venc, recorrente: !unica, pago: paga, cat, obs, sel: true});
   });
   return out;
 }
@@ -2727,7 +2727,7 @@ function importForm(st) {
     return `<p class="muted sm">${plural(st.itens.length, 'conta encontrada', 'contas encontradas')}. Desmarque o que não quiser. Depois dá para editar cada uma.</p>
       <div class="steps">${st.itens.map((x, i) => `<div class="step" style="grid-template-columns:auto 1fr auto;cursor:default">
         <button class="box" role="checkbox" aria-checked="${x.sel && !ja(x)}" data-act="ciSel" data-i="${i}" ${ja(x) ? 'disabled' : ''}>${ic('check')}</button>
-        <span style="min-width:0"><p class="nome">${esc(x.nome)}</p><p class="tag">${ja(x) ? 'já cadastrada' : `${x.semData ? 'sem data · ' : ''}vence ${fmtData(fromKey(x.venc))} · ${CAT[x.cat]}${x.recorrente ? ' · todo mês' : ''}`}</p></span>
+        <span style="min-width:0"><p class="nome">${esc(x.nome)}</p><p class="tag">${ja(x) ? 'já cadastrada' : `${x.pago ? 'paga · ' : ''}${x.semData ? 'sem data · ' : ''}vence ${fmtData(fromKey(x.venc))} · ${CAT[x.cat]}${x.recorrente ? ' · todo mês' : ''}`}</p></span>
         <span class="money">${fmtBRL(x.valor)}</span></div>`).join('')}</div>
       ${st.itens.some(x => x.semData) ? `<p class="note warn">Linhas sem data ficaram com vencimento hoje. Ajuste depois tocando na conta.</p>` : ''}
       <div class="row-btns"><button class="btn ghost" data-act="ciVoltar">Voltar</button><button class="btn primary" data-act="ciOk" ${n ? '' : 'disabled'}>Importar ${plural(n, 'conta')}</button></div>`;
@@ -2763,8 +2763,13 @@ App.module({
     ciVoltar: () => { delete Sheet.st.itens; Sheet.refresh(); },
     ciOk: () => {
       const st = Sheet.st, s = F.st(), ja = x => s.contas.some(c => c.nome.toLowerCase() === x.nome.toLowerCase() && c.venc === x.venc);
-      const novas = st.itens.filter(x => x.sel && !ja(x)).map(x => ({id: uid(), serie: uid(), nome: x.nome, valor: x.valor, venc: x.venc, cat: x.cat, recorrente: x.recorrente, pago: false, pagoEm: null, obs: x.obs || ''}));
-      s.contas.push(...novas); F.save(s); Sheet.close(); ui.cMes = 0; App.render(); toast(`${plural(novas.length, 'conta importada', 'contas importadas')}`);
+      const series = {}, serieDe = n => series[n.toLowerCase()] || (series[n.toLowerCase()] = (s.contas.find(c => c.nome.toLowerCase() === n.toLowerCase()) || {}).serie || uid());
+      const novas = st.itens.filter(x => x.sel && !ja(x)).map(x => ({id: uid(), serie: serieDe(x.nome), nome: x.nome, valor: x.valor, venc: x.venc, cat: x.cat, recorrente: x.recorrente,
+        pago: !!x.pago, pagoEm: x.pago ? fromKey(x.venc).getTime() : null, obs: x.obs || ''}));
+      s.contas.push(...novas);
+      // conta que repete e já está paga: garante a do mês seguinte (se ainda não houver nenhuma com esse nome naquele mês)
+      novas.filter(c => c.pago && c.recorrente).forEach(c => { const venc = proxMes(c.venc), mes = venc.slice(0, 7);
+        if (!s.contas.some(x => x.nome.toLowerCase() === c.nome.toLowerCase() && x.venc.startsWith(mes))) s.contas.push({...c, id: uid(), venc, pago: false, pagoEm: null}); }); F.save(s); Sheet.close(); ui.cMes = 0; App.render(); toast(`${plural(novas.length, 'conta importada', 'contas importadas')}`);
     },
     cIrVencida: () => { const v = abertas(F.st()).find(c => diasAte(c.venc) < 0); if (!v) return; const d = fromKey(v.venc), n = new Date(); ui.cMes = (d.getFullYear() - n.getFullYear()) * 12 + d.getMonth() - n.getMonth(); App.render(); },
     cNova: () => Sheet.open({title: 'Nova conta', render: form, state: {nome: '', valor: '', venc: dkey(), cat: 'outros', recorrente: true, obs: ''}}),
