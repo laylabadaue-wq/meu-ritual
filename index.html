@@ -530,7 +530,7 @@ const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e)
    "cabelo", "cabelo-evo-<id>", "perfil"). Na conta: data/users/<id>/<doc> (privado).
    Espelhado no navegador: abre na hora e funciona sem conexão. */
 const CACHE = 'meu-ritual:v1';
-const APP_VERSAO = '15'; // o montar_site.py troca pelo número da versão do site
+const APP_VERSAO = '16'; // o montar_site.py troca pelo número da versão do site
 /* IndexedDB: guarda tudo no aparelho com bem mais espaço que o localStorage (fotos incluídas) */
 const IDB = {
   db: null,
@@ -1056,6 +1056,11 @@ Object.assign(App.actions, {
   tmToggle: () => Timer.toggle(), tmRestart: () => Timer.restart(), tmAdd: () => Timer.add(15), tmStop: () => Timer.stop(),
   ajustes: () => openAjustes(),
   gptGuia: () => { Sheet.st.guia = !Sheet.st.guia; Sheet.refresh(); },
+  ajImportar: d => {
+    const abrir = {contas: ['contas', 'cImportar'], tarefas: ['hoje', 'tiAbrir'], colecao: ['colecao', 'piAbrir']}[d.k];
+    Sheet.close(); App.go(abrir[0]);
+    setTimeout(() => { App.actions[abrir[1]](); Sheet.st.guia = true; Sheet.refresh(); }, 320);
+  },
   gptCopiar: async d => {
     try { await navigator.clipboard.writeText(App.prompts[d.k]); toast('Prompt copiado — cole no ChatGPT'); }
     catch (e) { const t = $('#gpt-prompt'); t.focus(); t.select(); toast('Selecionei o prompt: toque em Copiar no menu do iPhone'); }
@@ -1168,6 +1173,9 @@ function openAjustes() {
     <div class="f"><span>Aparência</span><div class="seg" role="group" aria-label="Aparência">${[['auto', 'Automático', 'sliders'], ['claro', 'Claro', 'sun'], ['escuro', 'Escuro', 'moon']]
       .map(([k, l, i]) => `<button aria-pressed="${((Store.get('perfil') || {}).tema || 'auto') === k}" data-act="ajTema" data-t="${k}">${ic(i)} ${l}</button>`).join('')}</div>
       <p class="muted sm" style="font-weight:400">Automático segue o tema do seu celular.</p></div>
+    <div class="f"><span>Importar com o ChatGPT</span>
+      <p class="muted sm" style="font-weight:400">Copie um prompt pronto, cole no ChatGPT com suas informações e traga a resposta de volta para o app.</p>
+      <div class="row-btns"><button class="btn sand" data-act="ajImportar" data-k="contas">Contas</button><button class="btn sand" data-act="ajImportar" data-k="tarefas">Tarefas</button><button class="btn sand" data-act="ajImportar" data-k="colecao">Produtos</button></div></div>
     ${window.Notification && podeArquivo() ? `<div class="f"><span>Avisos de tarefas e contas</span>
       <p class="muted sm" style="font-weight:400">${Notification.permission === 'granted' ? 'Ativados: o app avisa no horário enquanto estiver aberto.' : 'Permita para o app avisar no horário enquanto estiver aberto.'} Para tocar mesmo com o app fechado, use "Lembrar no iPhone" em cada tarefa ou conta.</p>
       ${Notification.permission === 'granted' ? '' : `<button class="btn ghost" data-act="ajNotif">${ic('bell')} Ativar avisos</button>`}</div>` : ''}
