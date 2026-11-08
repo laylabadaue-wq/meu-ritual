@@ -53,6 +53,7 @@
 html{-webkit-text-size-adjust:100%}
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--bg)}
 img{max-width:100%}
 [hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font:15.5px/1.5 var(--f-body);
@@ -529,7 +530,7 @@ const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e)
    "cabelo", "cabelo-evo-<id>", "perfil"). Na conta: data/users/<id>/<doc> (privado).
    Espelhado no navegador: abre na hora e funciona sem conexão. */
 const CACHE = 'meu-ritual:v1';
-const APP_VERSAO = '12'; // o montar_site.py troca pelo número da versão do site
+const APP_VERSAO = '13'; // o montar_site.py troca pelo número da versão do site
 /* IndexedDB: guarda tudo no aparelho com bem mais espaço que o localStorage (fotos incluídas) */
 const IDB = {
   db: null,
@@ -2758,6 +2759,30 @@ Cartão; variável; dia 6</p>
     ${st.err ? `<p class="note warn">${esc(st.err)}</p>` : ''}
     <button class="btn primary" data-act="ciLer">Ver contas encontradas</button>`;
 }
+/* conserto: contas importadas por versão antiga ficaram com "paga", "variável", "única" no nome.
+   Limpa o nome, aplica as marcações, remove repetidas e cria o mês seguinte das pagas que repetem. Roda uma vez por conta afetada. */
+const MARCAS = /(^|\s)(paga|pago|vari[aá]vel|fixo|[uú]nica)(?=\s|$)/gi;
+App.hooks.migrar.push(() => {
+  const s = Store.get('financas'); if (!s || !s.contas) return;
+  let mudou = false;
+  s.contas.forEach(c => {
+    if (!c.nome.match(MARCAS)) return;
+    const n = c.nome.toLowerCase();
+    if (/(^|\s)(paga|pago)(\s|$)/.test(n) && c.valor) { c.pago = true; c.pagoEm = c.pagoEm || fromKey(c.venc).getTime(); }
+    if (/(^|\s)vari[aá]vel(\s|$)/.test(n)) c.tipoValor = 'variavel';
+    if (/(^|\s)[uú]nica(\s|$)/.test(n)) c.recorrente = false;
+    c.nome = c.nome.replace(MARCAS, ' ').replace(/\s+/g, ' ').trim();
+    mudou = true;
+  });
+  if (!mudou) return;
+  const vistos = new Map(), manter = [];
+  [...s.contas].sort((a, b) => (b.pago - a.pago)).forEach(c => { const k = c.nome.toLowerCase() + '|' + c.venc; if (!vistos.has(k)) { vistos.set(k, 1); manter.push(c); } });
+  const series = {}; manter.forEach(c => { const k = c.nome.toLowerCase(); c.serie = series[k] || (series[k] = c.serie); });
+  manter.filter(c => c.pago && c.recorrente).forEach(c => { const venc = proxMes(c.venc), mes = venc.slice(0, 7);
+    if (!manter.some(x => x.nome.toLowerCase() === c.nome.toLowerCase() && x.venc.startsWith(mes))) manter.push({...c, id: uid(), venc, valor: c.tipoValor === 'variavel' ? null : c.valor, pago: false, pagoEm: null}); });
+  s.contas = manter; Store.put('financas', s);
+  setTimeout(() => toast('Arrumei as contas importadas: nomes, pagas e repetidas'), 300);
+});
 App.hooks.avisos.push(() => abertas(F.st()).map(c => { const d = fromKey(c.venc); d.setHours(9, 0, 0, 0); return {id: 'conta-' + c.id, titulo: `Vence hoje: ${c.nome}`, corpo: c.valor ? fmtBRL(c.valor) : 'valor a preencher', quando: d}; }));
 
 App.module({
