@@ -529,7 +529,7 @@ const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e)
    "cabelo", "cabelo-evo-<id>", "perfil"). Na conta: data/users/<id>/<doc> (privado).
    Espelhado no navegador: abre na hora e funciona sem conexão. */
 const CACHE = 'meu-ritual:v1';
-const APP_VERSAO = '9'; // o montar_site.py troca pelo número da versão do site
+const APP_VERSAO = '10'; // o montar_site.py troca pelo número da versão do site
 /* IndexedDB: guarda tudo no aparelho com bem mais espaço que o localStorage (fotos incluídas) */
 const IDB = {
   db: null,
@@ -1076,13 +1076,34 @@ function viewHome() {
     <h1>${saud}${p.nome ? `, <em>${esc(p.nome)}</em>` : ''}</h1></div>
     <div class="row"><button class="icon-btn" data-act="temaRapido" aria-label="Alternar modo claro e escuro">${ic(document.documentElement.getAttribute('data-theme') === 'dark' || (!document.documentElement.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches) ? 'sun' : 'moon')}</button>
     <button class="icon-btn" data-act="ajustes" aria-label="Ajustes e backup">${ic('sliders')}</button></div></header>
-    <div class="stack">${App.mods.map(m => m.home ? m.home() : '').join('')}
-    ${prog.length ? `<section class="card"><h3>Seu progresso da semana</h3><div class="rings">
-      ${prog.map(x => `<div class="rg">${ring(x.pct, 74, 4, x.valor)}<span>${x.label}</span></div>`).join('')}
-      <div class="rg">${ring(media, 74, 4, media + '%')}<span>Consistência</span></div></div></section>` : ''}
-    ${App.mods.map(m => m.homeFim ? m.homeFim() : '').join('')}</div>
+    ${homeBlocos(p, prog, media)}
     <p class="sync" id="sync"></p>`;
 }
+/* Tela inicial organizável: cada bloco tem um id; a ordem e os ocultos ficam no perfil. */
+const HOME_NOMES = {treinos: 'Treino de hoje', skincare: 'Skincare de hoje', cabelo: 'Próximo tratamento capilar', financas: 'Próxima conta', progresso: 'Progresso da semana', tarefas: 'Minhas tarefas'};
+function homeBlocos(p, prog, media) {
+  const blocos = [
+    ...App.mods.filter(m => m.home).map(m => ({id: m.id, html: () => m.home()})),
+    {id: 'progresso', html: () => prog.length ? `<section class="card"><h3>Seu progresso da semana</h3><div class="rings">
+      ${prog.map(x => `<div class="rg">${ring(x.pct, 74, 4, x.valor)}<span>${x.label}</span></div>`).join('')}
+      <div class="rg">${ring(media, 74, 4, media + '%')}<span>Consistência</span></div></div></section>` : ''},
+    ...App.mods.filter(m => m.homeFim).map(m => ({id: m.id, html: () => m.homeFim()}))
+  ];
+  const ordem = p.homeOrdem || [], pos = id => { const i = ordem.indexOf(id); return i < 0 ? 999 : i; };
+  const lista = blocos.map((b, i) => ({...b, i})).sort((a, b) => pos(a.id) - pos(b.id) || a.i - b.i), ocultos = p.homeOcultos || [];
+  if (App.ui.homeEdit) return `<section class="card"><div class="between"><h3>Organizar a tela inicial</h3><button class="btn sm primary" data-act="homeEdit">Concluir</button></div>
+    <p class="sm muted" style="margin-top:6px">Segure os pontinhos e arraste para mudar a ordem. Use Esconder e Mostrar para escolher o que aparece.</p>
+    <div class="list" style="margin-top:12px" data-sort-act="homeMove">${lista.map(b => { const oc = ocultos.includes(b.id);
+      return `<div class="item" data-sort data-id="${b.id}" style="cursor:default;padding:8px 10px 8px 2px;${oc ? 'opacity:.55' : ''}"><button class="handle" aria-label="Arrastar ${esc(HOME_NOMES[b.id] || b.id)}">${ic('grip')}</button>
+        <span class="grow">${esc(HOME_NOMES[b.id] || b.id)}</span><button class="btn sm ${oc ? 'ghost' : 'sand'}" data-act="homeVer" data-id="${b.id}">${oc ? 'Mostrar' : 'Esconder'}</button></div>`; }).join('')}</div></section>`;
+  return `<div class="stack">${lista.filter(b => !ocultos.includes(b.id)).map(b => b.html()).join('')}
+    <button class="btn link sm" style="justify-self:center" data-act="homeEdit">${ic('sliders')} Organizar tela inicial</button></div>`;
+}
+Object.assign(App.actions, {
+  homeEdit: () => { App.ui.homeEdit = !App.ui.homeEdit; App.render(); if (App.ui.homeEdit) window.scrollTo(0, 0); },
+  homeMove: ({from, to}) => { const ids = [...document.querySelectorAll('[data-sort-act="homeMove"] [data-sort]')].map(e => e.dataset.id); mover(ids, from, to); const p = Store.get('perfil') || {}; p.homeOrdem = ids; Store.put('perfil', p); },
+  homeVer: d => { const p = Store.get('perfil') || {}, o = new Set(p.homeOcultos || []); o.has(d.id) ? o.delete(d.id) : o.add(d.id); p.homeOcultos = [...o]; Store.put('perfil', p); }
+});
 const loadingCard = () => `<div class="skel" aria-label="Carregando"></div>`;
 
 /* ---------- Tema: automático (segue o aparelho), claro ou escuro ---------- */
@@ -2679,7 +2700,8 @@ const CAT_PALAVRAS = [[/luz|energia|enel|light|cemig|água|agua|sabesp|cedae|gá
 function lerContas(txt) {
   const hoje = new Date(), out = [];
   String(txt || '').split(/\r?\n/).forEach(l => {
-    let resto = l.replace(/"/g, ' ').trim(), venc = null, m;
+    const corte = l.indexOf('//'), obs = corte >= 0 ? l.slice(corte + 2).trim() : '';
+    let resto = (corte >= 0 ? l.slice(0, corte) : l).replace(/"/g, ' ').trim(), venc = null, m;
     if (!resto) return;
     if ((m = resto.match(/(\d{4})-(\d{2})-(\d{2})/))) { venc = `${m[1]}-${m[2]}-${m[3]}`; resto = resto.replace(m[0], ' '); }
     if (!venc && (m = resto.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/))) { let y = m[3] ? +m[3] : hoje.getFullYear(); if (y < 100) y += 2000; venc = dkey(new Date(y, +m[2] - 1, +m[1])); resto = resto.replace(m[0], ' '); }
@@ -2694,7 +2716,7 @@ function lerContas(txt) {
     const nome = resto.replace(/\b(mensal|todo m[eê]s|única|unica|avulsa|vencimento|venc\.?|valor|r\$)\b/gi, ' ').replace(/[;,\t|]+/g, ' ').replace(/\s+/g, ' ').replace(/^[\s\-–:]+|[\s\-–:]+$/g, '').trim();
     if (!nome) return;
     const cat = (CAT_PALAVRAS.find(([re]) => re.test(nome)) || [0, 'outros'])[1];
-    out.push({nome: nome.charAt(0).toUpperCase() + nome.slice(1), valor, venc: venc || dkey(hoje), semData: !venc, recorrente: !unica, cat, sel: true});
+    out.push({nome: nome.charAt(0).toUpperCase() + nome.slice(1), valor, venc: venc || dkey(hoje), semData: !venc, recorrente: !unica, cat, obs, sel: true});
   });
   return out;
 }
@@ -2741,7 +2763,7 @@ App.module({
     ciVoltar: () => { delete Sheet.st.itens; Sheet.refresh(); },
     ciOk: () => {
       const st = Sheet.st, s = F.st(), ja = x => s.contas.some(c => c.nome.toLowerCase() === x.nome.toLowerCase() && c.venc === x.venc);
-      const novas = st.itens.filter(x => x.sel && !ja(x)).map(x => ({id: uid(), serie: uid(), nome: x.nome, valor: x.valor, venc: x.venc, cat: x.cat, recorrente: x.recorrente, pago: false, pagoEm: null, obs: ''}));
+      const novas = st.itens.filter(x => x.sel && !ja(x)).map(x => ({id: uid(), serie: uid(), nome: x.nome, valor: x.valor, venc: x.venc, cat: x.cat, recorrente: x.recorrente, pago: false, pagoEm: null, obs: x.obs || ''}));
       s.contas.push(...novas); F.save(s); Sheet.close(); ui.cMes = 0; App.render(); toast(`${plural(novas.length, 'conta importada', 'contas importadas')}`);
     },
     cIrVencida: () => { const v = abertas(F.st()).find(c => diasAte(c.venc) < 0); if (!v) return; const d = fromKey(v.venc), n = new Date(); ui.cMes = (d.getFullYear() - n.getFullYear()) * 12 + d.getMonth() - n.getMonth(); App.render(); },
@@ -2787,7 +2809,10 @@ App.module({
    ===================================================================== */
 (() => {
 const ui = App.ui;
-const D = {st: () => Store.get('tarefas') || {v: 1, itens: []}, save: s => Store.put('tarefas', s)};
+const SEC_PADRAO = ['Faculdade', 'Compromissos', 'Pessoal'];
+const semAcentoId = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); // ids fixos: estáveis antes do 1º salvamento
+const D = {st: () => { const s = Store.get('tarefas') || {v: 1, itens: []}; if (!s.secoes) s.secoes = SEC_PADRAO.map(nome => ({id: semAcentoId(nome), nome})); return s; }, save: s => Store.put('tarefas', s)};
+const secNome = (s, id) => (s.secoes.find(x => x.id === id) || {}).nome || '';
 const REP = {nao: 'Não repete', diario: 'Todo dia', semanal: 'Toda semana', mensal: 'Todo mês'};
 const quando = x => { if (!x.data) return null; const [h, m] = (x.hora || '09:00').split(':').map(Number); const d = fromKey(x.data); d.setHours(h, m, 0, 0); return d; };
 const atrasada = x => !x.feito && x.data && (x.hora ? quando(x) < new Date() : x.data < dkey());
@@ -2804,16 +2829,29 @@ function linha(x) {
     ${extra ? `<p class="tag" style="${atrasada(x) ? 'color:var(--danger)' : ''}">${extra}</p>` : ''}</button></div>`;
 }
 function homeFim() {
-  const s = D.st(), pend = s.itens.filter(x => !x.feito).sort(ordem), feitos = s.itens.filter(x => x.feito).sort((a, b) => (b.feitoEm || 0) - (a.feitoEm || 0));
+  const s = D.st(), sec = ui.tfSec && s.secoes.some(x => x.id === ui.tfSec) ? ui.tfSec : 'todas';
+  const naSec = x => sec === 'todas' || x.sec === sec;
+  const pend = s.itens.filter(x => !x.feito && naSec(x)).sort(ordem), feitos = s.itens.filter(x => x.feito && naSec(x)).sort((a, b) => (b.feitoEm || 0) - (a.feitoEm || 0));
+  const conta = id => s.itens.filter(x => !x.feito && (id === 'todas' || x.sec === id)).length;
+  const chips = [{id: 'todas', nome: 'Todas'}, ...s.secoes].map(c => `<button class="chip" aria-pressed="${sec === c.id}" data-act="tfSec" data-s="${c.id}">${esc(c.nome)}${conta(c.id) ? `<span class="n">${conta(c.id)}</span>` : ''}</button>`).join('')
+    + `<button class="chip" data-act="tfSecoes" aria-label="Criar ou apagar seções">${ic('plus')} Seção</button>`;
+  let lista;
+  if (!pend.length) lista = `<p class="sm muted" style="margin-top:10px">Nenhuma tarefa pendente${sec !== 'todas' ? ' em ' + esc(secNome(s, sec)) : ''}.</p>`;
+  else if (sec !== 'todas') lista = `<div class="steps" style="margin-top:4px">${pend.map(linha).join('')}</div>`;
+  else lista = [...s.secoes.map(c => c.id), ''].map(id => { const grupo = x => s.secoes.some(c => c.id === x.sec) ? x.sec : ''; const xs = pend.filter(x => grupo(x) === id); if (!xs.length) return '';
+    return `<p class="grp-title" style="margin-top:12px">${id ? esc(secNome(s, id)) : 'Sem seção'}</p><div class="steps">${xs.map(linha).join('')}</div>`; }).join('');
   return `<section class="card" id="tarefas"><div class="between"><h3>Minhas tarefas</h3><span class="tag">${pend.length ? plural(pend.length, 'pendente') : 'tudo feito'}</span></div>
-    <div class="row" style="margin-top:10px"><input class="t" id="tf-nova" placeholder="Nova tarefa" maxlength="120" enterkeyhint="done" autocomplete="off">
+    <div class="chips" style="margin-top:10px">${chips}</div>
+    <div class="row" style="margin-top:10px"><input class="t" id="tf-nova" placeholder="${sec === 'todas' ? 'Nova tarefa' : 'Nova tarefa em ' + esc(secNome(s, sec))}" maxlength="120" enterkeyhint="done" autocomplete="off">
       <button class="icon-btn" style="box-shadow:none;background:var(--accent);color:var(--on-accent)" data-act="tfAdd" aria-label="Adicionar tarefa">${ic('plus')}</button></div>
-    ${pend.length ? `<div class="steps" style="margin-top:4px">${pend.map(linha).join('')}</div>` : `<p class="sm muted" style="margin-top:10px">Nenhuma tarefa pendente.</p>`}
+    ${lista}
     ${feitos.length ? `<button class="btn link sm" data-act="tfVerFeitos">${ui.tfFeitos ? 'Ocultar' : 'Mostrar'} concluídas (${feitos.length})</button>
       ${ui.tfFeitos ? `<div class="steps">${feitos.map(linha).join('')}</div><button class="btn link sm" style="color:var(--danger)" data-act="tfLimpar">Apagar concluídas</button>` : ''}` : ''}</section>`;
 }
 function form(st) {
+  const s = D.st();
   return `<label class="f">Tarefa<input class="t" id="tf-titulo" data-bind="titulo" value="${esc(st.titulo)}" maxlength="120"></label>
+    <div class="f"><span>Seção</span><div class="chips wrap">${[{id: '', nome: 'Sem seção'}, ...s.secoes].map(c => `<button class="chip" aria-pressed="${(st.sec || '') === c.id}" data-act="tfSecForm" data-s="${c.id}">${esc(c.nome)}</button>`).join('')}</div></div>
     <label class="f">Notas<textarea class="t" id="tf-nota" data-bind="nota" rows="2">${esc(st.nota)}</textarea></label>
     <div class="grid2"><label class="f">Data<input class="t" id="tf-data" type="date" data-bind="data" value="${esc(st.data)}"></label>
       <label class="f">Horário<input class="t" id="tf-hora" type="time" data-bind="hora" value="${esc(st.hora)}"></label></div>
@@ -2832,7 +2870,7 @@ function proxima(x) {
 const proxMesT = k => { const d = fromKey(k), dia = d.getDate(), n = new Date(d.getFullYear(), d.getMonth() + 1, 1); n.setDate(Math.min(dia, new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate())); return dkey(n); };
 const adicionar = () => {
   const el = $('#tf-nova'), t = el && el.value.trim(); if (!t) return el && el.focus();
-  const s = D.st(); s.itens.push({id: uid(), titulo: t, nota: '', data: '', hora: '', rep: 'nao', feito: false, criado: Date.now()}); D.save(s);
+  const s = D.st(); s.itens.push({id: uid(), titulo: t, nota: '', data: '', hora: '', rep: 'nao', sec: ui.tfSec && ui.tfSec !== 'todas' ? ui.tfSec : '', feito: false, criado: Date.now()}); D.save(s);
   setTimeout(() => { const n = $('#tf-nova'); if (n) n.focus(); }, 30);
 };
 document.addEventListener('keydown', e => { if (e.target.id === 'tf-nova' && e.key === 'Enter') { e.preventDefault(); adicionar(); } });
@@ -2842,6 +2880,17 @@ App.module({
   id: 'tarefas', homeFim,
   actions: {
     tfAdd: adicionar,
+    tfSec: d => { ui.tfSec = d.s; App.render(); },
+    tfSecForm: d => { Sheet.st.sec = d.s; Sheet.refresh(); },
+    tfSecoes: () => Sheet.open({title: 'Seções das tarefas', state: {nova: ''}, render: st => { const s = D.st();
+      return `<div class="row"><input class="t" id="tf-sec-nova" data-bind="nova" value="${esc(st.nova)}" placeholder="Nova seção, ex.: Trabalho" maxlength="24"><button class="btn primary" data-act="tfSecAdd">Criar</button></div>
+        <ul class="ordlist">${s.secoes.map(c => `<li><span class="grow">${esc(c.nome)}</span><span class="tag">${plural(s.itens.filter(x => x.sec === c.id && !x.feito).length, 'pendente')}</span>
+          <button class="icon-btn sm" data-act="tfSecDel" data-id="${c.id}" aria-label="Apagar seção ${esc(c.nome)}">${ic('trash')}</button></li>`).join('')}</ul>
+        <p class="muted sm">Ao apagar uma seção, as tarefas dela continuam, só ficam sem seção.</p>`; }}),
+    tfSecAdd: () => { const st = Sheet.st, nome = (st.nova || '').trim(), s = D.st(); if (!nome) return;
+      if (s.secoes.some(c => c.nome.toLowerCase() === nome.toLowerCase())) return toast('Essa seção já existe');
+      const c = {id: uid(), nome}; s.secoes.push(c); D.save(s); ui.tfSec = c.id; st.nova = ''; Sheet.refresh(); toast(`Seção ${nome} criada`); },
+    tfSecDel: d => { const s = D.st(); s.secoes = s.secoes.filter(c => c.id !== d.id); s.itens.forEach(x => { if (x.sec === d.id) x.sec = ''; }); if (ui.tfSec === d.id) ui.tfSec = 'todas'; D.save(s); Sheet.refresh(); },
     tfVerFeitos: () => { ui.tfFeitos = !ui.tfFeitos; App.render(); },
     tfCheck: d => { const s = D.st(), x = s.itens.find(y => y.id === d.id); x.feito = !x.feito; x.feitoEm = x.feito ? Date.now() : null;
       if (x.feito) { buzz(12); const n = proxima(x); if (n && !s.itens.some(y => !y.feito && y.titulo === n.titulo && y.data === n.data)) s.itens.push(n); }
@@ -2852,7 +2901,7 @@ App.module({
       if (!titulo) { st.err = 'Escreva a tarefa.'; return Sheet.refresh(); }
       if (st.rep !== 'nao' && !st.data) { st.err = 'Para repetir, escolha uma data.'; return Sheet.refresh(); }
       const i = s.itens.findIndex(y => y.id === st.id);
-      s.itens[i] = {...s.itens[i], titulo, nota: (st.nota || '').trim(), data: st.data || '', hora: st.data ? st.hora || '' : '', rep: st.rep || 'nao'};
+      s.itens[i] = {...s.itens[i], titulo, nota: (st.nota || '').trim(), data: st.data || '', hora: st.data ? st.hora || '' : '', rep: st.rep || 'nao', sec: st.sec || ''};
       D.save(s); Sheet.close(); toast('Tarefa salva'); },
     tfLembrar: () => { const st = Sheet.st; if (!st.data) { st.err = 'Escolha a data (e o horário) para criar o lembrete.'; return Sheet.refresh(); }
       lembreteCalendario({id: 'tarefa-' + st.id + '-' + st.data, titulo: (st.titulo || '').trim() || 'Tarefa', nota: st.nota, quando: quando(st)}); },
