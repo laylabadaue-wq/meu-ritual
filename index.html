@@ -183,7 +183,7 @@ nav.tabs a[aria-current="page"] .ic{stroke-width:1.9}
 .daypill.on{background:var(--sage-soft);color:var(--accent)}
 
 /* demonstração */
-.demo{position:relative;border-radius:22px;overflow:hidden;background:var(--surface-2);aspect-ratio:3/2;max-width:100%}
+.demo{position:relative;border-radius:22px;overflow:hidden;background:var(--surface-2);height:0;padding-top:66.67%;max-width:100%;flex:none}
 .demo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .demo img.f1{animation:swap 2.8s ease-in-out infinite}
 @keyframes swap{0%,38%{opacity:0}50%,88%{opacity:1}100%{opacity:0}}
@@ -193,8 +193,8 @@ nav.tabs a[aria-current="page"] .ic{stroke-width:1.9}
 .demo.none .ic{width:56px;height:56px;stroke-width:1}
 .howto{display:grid;gap:10px}
 .howto ol{margin:0;padding:0;list-style:none;display:grid;gap:10px;counter-reset:p}
-.howto li{display:grid;grid-template-columns:26px 1fr;gap:10px;align-items:start;counter-increment:p}
-.howto li::before{content:counter(p);width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-size:.8rem;font-weight:600}
+.howto ol li{display:grid;grid-template-columns:26px 1fr;gap:10px;align-items:start;counter-increment:p}
+.howto ol li::before{content:counter(p);width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-size:.8rem;font-weight:600}
 .howto ul{margin:0;padding-left:18px;display:grid;gap:4px}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:.9rem}
 .kv dt{color:var(--muted)} .kv dd{margin:0;text-align:right}
@@ -405,7 +405,8 @@ body.has-timer #toast{bottom:calc(166px + env(safe-area-inset-bottom,0px))}
 
 .reps-in,.tile b,.ring-p span,.tring span,.sum-grid b,.cal-day .d b,.ord,.entry .date,.tmark,.cmp figcaption,h1,h2{font-variant-numeric:lining-nums tabular-nums}
 .demo.ilu{background:linear-gradient(180deg,var(--surface-2),color-mix(in srgb,var(--surface-2) 70%,var(--sand)))}
-.demo.ilu svg,.th.ilu svg,.thumb.ilu svg{width:100%;height:100%;display:block}
+.demo.ilu svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.th.ilu svg,.thumb.ilu svg{width:100%;height:100%;display:block}
 .th.ilu,.thumb.ilu,.tb.ilu{background:var(--surface-2);overflow:hidden;display:block}
 .thumbs .tb{width:46px;height:46px;border-radius:12px;flex:none}
 .tb.ilu svg{width:100%;height:100%;display:block}
@@ -530,7 +531,7 @@ const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e)
    "cabelo", "cabelo-evo-<id>", "perfil"). Na conta: data/users/<id>/<doc> (privado).
    Espelhado no navegador: abre na hora e funciona sem conexão. */
 const CACHE = 'meu-ritual:v1';
-const APP_VERSAO = '16'; // o montar_site.py troca pelo número da versão do site
+const APP_VERSAO = '17'; // o montar_site.py troca pelo número da versão do site
 /* IndexedDB: guarda tudo no aparelho com bem mais espaço que o localStorage (fotos incluídas) */
 const IDB = {
   db: null,
@@ -1344,7 +1345,7 @@ const Ilu = {
     const r = Math.PI / 180, L = this.L, v = (a, l) => [Math.sin(a * r) * l, Math.cos(a * r) * l], add = (a, b) => [a[0] + b[0], a[1] + b[1]];
     const H = p.h, u = [Math.sin(p.t * r), -Math.cos(p.t * r)], S = add(H, [u[0] * L.tr, u[1] * L.tr]), Hd = add(S, [u[0] * L.hd, u[1] * L.hd]);
     const arm = a => { const E = add(S, v(a[0], L.ua)); return [S, E, add(E, v(a[1], L.fa))]; };
-    const leg = b => { const K = add(H, v(b[0], L.th)), A = add(K, v(b[1], L.sh)); return [H, K, A, add(A, v(b[1] + 90 + (p.fo || 0), L.ft))]; };
+    const leg = b => { const K = add(H, v(b[0], L.th * (p.cx || 1))), A = add(K, v(b[1], L.sh)); return [H, K, A, add(A, v(b[1] + 90 + (p.fo || 0), L.ft))]; };
     return {H, S, Hd, u, af: arm(p.af), an: arm(p.an), lf: leg(p.lf), ln: leg(p.ln)};
   },
   mix(a, b, k) {
@@ -1354,6 +1355,10 @@ const Ilu = {
   },
   svg(key, k) {
     const D = ILU[key], P = this.pts(this.mix(D.a, {...D.a, ...D.b}, k));
+    if (D.front) { // vista de frente: cada braço sai do seu ombro e cada perna do seu lado do quadril
+      const mv = (l, dx) => l.forEach((q, i) => { l[i] = [q[0] + dx, q[1]]; }); // cópia: ombro/quadril são o mesmo ponto nos dois membros
+      mv(P.af, -6.5); mv(P.an, 6.5); mv(P.lf, -4); mv(P.ln, 4);
+    }
     const pl = (q, cls, w) => `<polyline class="${cls}" stroke-width="${w}" points="${q.map(x => x[0].toFixed(1) + ',' + x[1].toFixed(1)).join(' ')}"/>`;
     const c = (q, r, cls) => `<circle class="${cls}" cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="${r}"/>`;
     const perna = (l, x) => `<g class="${x}">${pl(l.slice(0, 3), 'lg', 8.5)}${pl(l.slice(2), 'sh', 4.6)}</g>`;
@@ -1384,7 +1389,10 @@ const pose = (h, t, af, an, lf, ln, fo = 0) => ({h, t, af, an, lf, ln, fo});
 I('Barbell_Hip_Thrust', pose([74, 95], -65, [65, 65], [65, 65], [126, 17], [126, 17]), pose([78, 81], -90, [90, 90], [90, 90], [90, 0], [90, 0]), {mao: 'plate', maoF: false, fundo: () => fx.bench(14, 84, 34)});
 I('Split_Squat_with_Dumbbells', pose([80, 59], 0, [3, 3], [3, 3], [-25, -30], [20, 0]), pose([80, 79], 5, [3, 3], [3, 3], [-10, -80], [85, 0]), {mao: 'db'});
 I('Romanian_Deadlift', pose([78, 60], 0, [0, 0], [0, 0], [3, -3], [3, -3]), pose([70, 62], 80, [0, 0], [0, 0], [12, -6], [12, -6]), {mao: 'plate', maoF: false});
-I('Thigh_Abductor', pose([80, 64], 0, [-25, -5], [25, 5], [-8, -2], [8, 2]), pose([80, 64], 0, [-25, -5], [25, 5], [-38, -12], [38, 12]), {front: true, fundo: () => `<rect class="fpr" opacity=".3" x="64" y="20" width="32" height="46" rx="4"/>` + fx.seat(58, 64, 44)});
+/* sentada vista de frente: coxa encurtada (cx) para os joelhos aparecerem logo abaixo do quadril */
+const padsJoelho = (P, fora) => [P.lf[1], P.ln[1]].map((k, i) => `<rect class="fpr" x="${(k[0] + (i ? 1 : -1) * (fora ? 4 : -4) - 3).toFixed(1)}" y="${(k[1] - 6).toFixed(1)}" width="6" height="12" rx="3"/>`).join('');
+const cadeiraFrente = () => `<rect class="fpr" opacity=".3" x="64" y="26" width="32" height="46" rx="4"/>` + fx.seat(56, 70, 48);
+I('Thigh_Abductor', {...pose([80, 70], 0, [-18, -4], [18, 4], [-30, -4], [30, 4]), cx: .4}, {...pose([80, 70], 0, [-18, -4], [18, 4], [-80, -14], [80, 14]), cx: .4}, {front: true, fundo: cadeiraFrente, frente: P => padsJoelho(P, true)});
 I('One-Legged_Cable_Kickback', pose([72, 60], 18, [75, 85], [75, 85], [0, 0], [6, -4]), pose([72, 60], 22, [75, 85], [75, 85], [0, 0], [-50, -40]), {fundo: P => fx.post(120) + fx.cabo([120, 96], P.ln[2])});
 I('Plank', pose([80, 90], 80, [0, 90], [0, 90], [-80, -80], [-80, -80]), pose([80, 88.5], 81, [0, 90], [0, 90], [-80, -80], [-80, -80]), {fundo: fx.mat});
 I('Reverse_Crunch', pose([80, 97], -90, [90, 90], [90, 90], [180, 90], [180, 90]), pose([78, 90], -102, [95, 95], [95, 95], [215, 150], [215, 150]), {fundo: fx.mat});
@@ -1462,7 +1470,7 @@ I('Seated_Calf_Raise', pose([72, 72], 0, [20, 70], [20, 70], [90, 0], [90, 0], 0
 I('Dumbbell_Step_Ups', pose([78, 60], 0, [3, 3], [3, 3], [0, 0], [60, -20]), pose([92, 40], 0, [3, 3], [3, 3], [0, 0], [0, 0]), {mao: 'db', fundo: () => box(84, 82, 44)});
 C('Bodyweight_Walking_Lunge', 'Dumbbell_Lunges', {mao: null, a: {af: [-20, 60], an: [-20, 60]}, b: {af: [-20, 60], an: [-20, 60]}});
 C('Single-Leg_Leg_Extension', 'Leg_Extensions', {b: {lf: [90, 0]}});
-C('Thigh_Adductor', 'Thigh_Abductor', {a: {lf: [-38, -12], ln: [38, 12]}, b: {lf: [-8, -2], ln: [8, 2]}});
+C('Thigh_Adductor', 'Thigh_Abductor', {a: {lf: [-80, -14], ln: [80, 14]}, b: {lf: [-30, -4], ln: [30, 4]}, frente: P => padsJoelho(P, false)});
 /* glúteos */
 I('Butt_Lift_Bridge', pose([80, 98], -90, [90, 90], [90, 90], [140, 15], [140, 15]), pose([82, 84], -112, [95, 95], [95, 95], [103, 3], [103, 3]), {fundo: fx.mat});
 C('Single_Leg_Glute_Bridge', 'Butt_Lift_Bridge', {a: {ln: [120, 120]}, b: {ln: [112, 112]}});
@@ -1498,10 +1506,10 @@ I('Elliptical_Trainer', pose([78, 56], 0, [30, 80], [60, 100], [-15, -10], [20, 
 I('Stairmaster', pose([78, 56], 6, [-20, 60], [20, 60], [0, 0], [50, -10]), pose([78, 52], 6, [20, 60], [-20, 60], [50, -10], [0, 0]),
   {fundo: () => `<polyline class="pr" stroke-width="3" opacity=".6" points="50,104 50,96 70,96 70,88 90,88 90,80 110,80"/><line class="pr" stroke-width="3" x1="116" y1="104" x2="110" y2="34"/>`});
 C('Step_Mill', 'Stairmaster');
-I('Rope_Jumping', pose([80, 60], 0, [-30, -20], [30, 20], [-3, -3], [3, 3]), pose([80, 52], 0, [-30, -20], [30, 20], [-6, -6], [6, 6]),
+I('Rope_Jumping', pose([80, 60], 0, [-30, -20], [30, 20], [-3, -3], [3, 3]), pose([80, 56], 0, [-30, -20], [30, 20], [-6, -6], [6, 6]),
   {front: true, frente: P => { const a = P.af[2], b = P.an[2], baixo = P.ln[3][1] + 4 > 100;
     return `<path d="M${a[0].toFixed(1)} ${a[1].toFixed(1)} Q 80 ${baixo ? 112 : -6} ${b[0].toFixed(1)} ${b[1].toFixed(1)}" fill="none" class="pr" stroke-width="1.6"/>`; }});
-I('Star_Jump', pose([80, 66], 0, [-10, -10], [10, 10], [-12, 12], [12, -12]), pose([80, 50], 0, [-150, -150], [150, 150], [-30, -30], [30, 30]), {front: true});
+I('Star_Jump', pose([80, 66], 0, [-10, -10], [10, 10], [-12, 12], [12, -12]), pose([80, 58], 0, [-150, -150], [150, 150], [-30, -30], [30, 30]), {front: true});
 I('Rowing_Stationary', pose([54, 94], 20, [95, 95], [95, 95], [140, 42], [140, 42]), pose([44, 94], -20, [-20, 95], [-20, 95], [92, 95], [92, 95]),
   {fundo: P => `<line class="pr" stroke-width="3" x1="20" y1="100" x2="120" y2="100"/><rect class="fpr" opacity=".45" x="30" y="96" width="30" height="4" rx="2"/><rect class="fpr" opacity=".45" x="96" y="84" width="5" height="16" rx="2"/>` + fx.cabo(P.an[2], [122, 88])});
 I('Battling_Ropes', pose([74, 70], 25, [40, 50], [110, 110], [60, -20], [60, -20]), pose([74, 70], 25, [110, 110], [40, 50], [60, -20], [60, -20]),
