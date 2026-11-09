@@ -136,12 +136,15 @@ async function marcar(id, tk) {
 }
 
 /* ---------- desenho ---------- */
+let ESC = 1; // tamanho das letras: maior no widget grande
 function txt(st, texto, cor, tam, peso) {
+  tam = Math.round(tam * ESC);
   const t = st.addText(texto); t.textColor = cor; t.font = peso === 2 ? Font.boldSystemFont(tam) : peso ? Font.semiboldSystemFont(tam) : Font.systemFont(tam); t.lineLimit = 1; return t;
 }
-function bloco(pai, fundo) { const b = pai.addStack(); b.layoutVertically(); b.backgroundColor = fundo; b.cornerRadius = 12; b.setPadding(7, 9, 7, 9); return b; }
+function bloco(pai, fundo) { const b = pai.addStack(); b.layoutVertically(); b.backgroundColor = fundo; b.cornerRadius = 12; b.setPadding(Math.round(7 * ESC), Math.round(9 * ESC), Math.round(7 * ESC), Math.round(9 * ESC)); return b; }
 function montar(d, msg) {
   const fam = config.widgetFamily || 'large', grande = fam === 'large', pequeno = fam === 'small';
+  ESC = grande ? 1.25 : 1;
   const w = new ListWidget();
   w.backgroundColor = COR.fundo; w.setPadding(13, 14, 12, 14); w.url = SITE;
   w.refreshAfterDate = new Date(Date.now() + 60 * 1000); // pede atualização rápida (o iPhone decide quando)
@@ -176,7 +179,7 @@ function montar(d, msg) {
   txt(cab, d.tarefas.deHoje.length ? 'TAREFAS DE HOJE' : 'PRÓXIMAS TAREFAS', COR.suave, 9, 1); cab.addSpacer();
   if (d.tarefas.deHoje.length) txt(cab, `${d.tarefas.deHoje.length} pendente${d.tarefas.deHoje.length > 1 ? 's' : ''}`, COR.suave, 9);
   w.addSpacer(4);
-  const max = pequeno ? 3 : grande ? 6 : 2;
+  const max = pequeno ? 3 : grande ? 5 : 2;
   const lista = d.tarefas.deHoje.length ? d.tarefas.deHoje : d.tarefas.proximas;
   if (!lista.length) txt(w, 'Nenhuma tarefa pendente ✓', COR.ok, 12);
   for (const x of lista.slice(0, max)) {
@@ -188,7 +191,7 @@ function montar(d, msg) {
     s.addSpacer();
     const info = [x.data && x.data !== dkey() ? dataCurta(x.data) : '', x.hora || ''].filter(Boolean).join(' · ');
     if (info) txt(s, info, late ? COR.alerta : COR.suave, 10);
-    w.addSpacer(3);
+    w.addSpacer(grande ? 6 : 3);
   }
   if (lista.length > max) txt(w, `+ ${lista.length - max} no app`, COR.suave, 10);
 
