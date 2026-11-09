@@ -1,21 +1,18 @@
-// Meu Ritual — widget para o app Scriptable (iPhone)
-// Mostra as tarefas de hoje e a próxima conta. Toque numa tarefa para marcá-la como feita.
-// Na primeira vez, rode este script dentro do Scriptable para entrar com a sua conta do Meu Ritual.
+// Meu Ritual — widget para o app Scriptable (iPhone). Versão completa, carregada pelo script curto que fica no Scriptable.
+// Mostra treino, skincare, tarefas e contas de hoje. Toque numa tarefa para marcá-la como feita.
 
 const API_KEY = 'AIzaSyC4PCD13mZv0hJtXkuYLHsjAPOPioRhf0Q';
 const PROJETO = 'meu-ritual-fb0f0';
 const SITE = 'https://laylabadaue-wq.github.io/meu-ritual/';
 const K_TOKEN = 'meuRitual.refreshToken', K_UID = 'meuRitual.uid';
 
+// sempre claro, nas cores do app
 const COR = {
-  fundo: Color.dynamic(new Color('#F6F1E9'), new Color('#1B1915')),
-  texto: Color.dynamic(new Color('#38382F'), new Color('#EFE8DC')),
-  suave: Color.dynamic(new Color('#857C6F'), new Color('#A99F90')),
-  salvia: Color.dynamic(new Color('#5D7256'), new Color('#AFC2A2')),
-  alerta: Color.dynamic(new Color('#A6483A'), new Color('#E9907F')),
+  fundo: new Color('#F6F1E9'), cartao: new Color('#FFFDF9'), texto: new Color('#38382F'), suave: new Color('#857C6F'),
+  salvia: new Color('#5D7256'), salviaClara: new Color('#E6EADD'), areia: new Color('#EFE6D8'), alerta: new Color('#A6483A'), ok: new Color('#4F7046')
 };
 
-/* ---------- conta (só o token fica guardado no Chaveiro do iPhone, nunca a senha) ---------- */
+/* ---------- conta (só uma chave de acesso fica no Chaveiro do iPhone, nunca a senha) ---------- */
 async function entrar() {
   const a = new Alert();
   a.title = 'Meu Ritual';
@@ -86,6 +83,8 @@ const pad = n => String(n).padStart(2, '0');
 const dkey = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const fromKey = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const DIAS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'], MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const dataCurta = k => { const d = fromKey(k); return `${DIAS[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`; };
 function proxima(x) {
   if (!x.data || !x.rep || x.rep === 'nao') return null;
   const d = fromKey(x.data);
@@ -94,18 +93,32 @@ function proxima(x) {
   else { const dia = d.getDate(); d.setDate(1); d.setMonth(d.getMonth() + 1); d.setDate(Math.min(dia, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate())); }
   return {...x, id: uid(), data: dkey(d), feito: false, feitoEm: null, criado: Date.now()};
 }
-function tarefasDoDia(doc) {
+function tarefas(doc) {
   const hoje = dkey(), itens = (doc && doc.itens || []).filter(x => !x.feito);
   const ordem = (a, b) => (a.data || '9999').localeCompare(b.data || '9999') || (a.hora || '99').localeCompare(b.hora || '99');
-  return [...itens.filter(x => x.data && x.data <= hoje).sort(ordem), ...itens.filter(x => !x.data).sort((a, b) => a.criado - b.criado)];
-}
-function proximaConta(doc) {
-  return (doc && doc.contas || []).filter(c => !c.pago).sort((a, b) => a.venc.localeCompare(b.venc))[0] || null;
+  const deHoje = [...itens.filter(x => x.data && x.data <= hoje).sort(ordem), ...itens.filter(x => !x.data).sort((a, b) => a.criado - b.criado)];
+  return {deHoje, proximas: itens.filter(x => x.data && x.data > hoje).sort(ordem)};
 }
 const brl = v => v ? 'R$ ' + v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.') : 'a preencher';
 function quando(venc) {
   const n = Math.round((fromKey(venc) - fromKey(dkey())) / 864e5);
-  return n < 0 ? `vencida há ${-n} d` : n === 0 ? 'vence hoje' : n === 1 ? 'vence amanhã' : `vence em ${n} dias`;
+  return n < 0 ? `vencida há ${-n}d` : n === 0 ? 'vence hoje' : n === 1 ? 'amanhã' : `em ${n} dias`;
+}
+function treinoDeHoje(treinos, hist) {
+  if (!treinos) return null;
+  const hoje = new Date().getDay(), k = dkey();
+  const feitos = (hist && hist.sessoes || []).filter(s => dkey(new Date(s.inicio)) === k);
+  const fichas = (treinos.treinos || []).filter(t => (t.dias || []).includes(hoje));
+  if (treinos.ativa) return {nome: treinos.ativa.nome, status: 'em andamento'};
+  if (feitos.length) return {nome: feitos.map(s => s.nome).join(' + '), status: 'feito', ok: true};
+  if (fichas.length) return {nome: fichas.map(t => t.nome).join(' + '), status: 'para hoje'};
+  return {nome: 'Descanso', status: 'sem treino hoje'};
+}
+function skincareDeHoje(sk) {
+  if (!sk) return null;
+  const dia = String(new Date().getDay()), k = dkey(), rot = (sk.rotinas || {})[dia] || {}, ch = (sk.checks || {})[k] || {};
+  const conta = per => { const ids = (rot[per] || []).map(x => x.id), feitos = (ch[per] || []).filter(id => ids.includes(id)).length; return {f: feitos, t: ids.length}; };
+  return {manha: conta('manha'), noite: conta('noite')};
 }
 
 /* ---------- marcar uma tarefa (quando você toca nela no widget) ---------- */
@@ -122,40 +135,89 @@ async function marcar(id, tk) {
   return r.error ? 'Não deu para salvar agora. Tente de novo com internet.' : `Feito: ${x.titulo}`;
 }
 
-/* ---------- desenho do widget ---------- */
-function linha(st, texto, cor, tam, peso) {
-  const t = st.addText(texto); t.textColor = cor; t.font = peso ? Font.semiboldSystemFont(tam) : Font.systemFont(tam); t.lineLimit = 1; return t;
+/* ---------- desenho ---------- */
+function txt(st, texto, cor, tam, peso) {
+  const t = st.addText(texto); t.textColor = cor; t.font = peso === 2 ? Font.boldSystemFont(tam) : peso ? Font.semiboldSystemFont(tam) : Font.systemFont(tam); t.lineLimit = 1; return t;
 }
-function montar(tarefas, conta, msg) {
-  const w = new ListWidget(), fam = config.widgetFamily || 'large';
-  w.backgroundColor = COR.fundo; w.setPadding(14, 14, 12, 14); w.url = SITE;
+function bloco(pai, fundo) { const b = pai.addStack(); b.layoutVertically(); b.backgroundColor = fundo; b.cornerRadius = 12; b.setPadding(7, 9, 7, 9); return b; }
+function montar(d, msg) {
+  const fam = config.widgetFamily || 'large', grande = fam === 'large', pequeno = fam === 'small';
+  const w = new ListWidget();
+  w.backgroundColor = COR.fundo; w.setPadding(13, 14, 12, 14); w.url = SITE;
   w.refreshAfterDate = new Date(Date.now() + 60 * 1000); // pede atualização rápida (o iPhone decide quando)
+  const hoje = new Date();
   const topo = w.addStack(); topo.centerAlignContent();
-  linha(topo, 'Meu Ritual', COR.salvia, 13, true); topo.addSpacer();
-  linha(topo, tarefas.length ? `${tarefas.length} pendente${tarefas.length > 1 ? 's' : ''}` : 'tudo feito', COR.suave, 11);
-  w.addSpacer(8);
-  if (msg) { linha(w, msg, COR.alerta, 12); return w; }
-  const max = fam === 'small' ? 2 : fam === 'medium' ? 3 : 7;
-  if (!tarefas.length) linha(w, 'Nenhuma tarefa para hoje', COR.suave, 13);
-  for (const x of tarefas.slice(0, max)) {
+  txt(topo, 'Meu Ritual', COR.salvia, 13, 2); topo.addSpacer();
+  txt(topo, `${DIAS[hoje.getDay()]}, ${hoje.getDate()} de ${MESES[hoje.getMonth()]}`, COR.suave, 11);
+  w.addSpacer(7);
+  if (msg) { txt(w, msg, COR.alerta, 12); return w; }
+
+  // treino e skincare lado a lado
+  if (!pequeno && (d.treino || d.pele)) {
+    const linha = w.addStack(); linha.spacing = 6;
+    if (d.treino) {
+      const b = bloco(linha, d.treino.ok ? COR.salviaClara : COR.cartao);
+      txt(b, 'TREINO', COR.suave, 8, 1);
+      txt(b, d.treino.nome, COR.texto, 11, 1);
+      txt(b, d.treino.ok ? '✓ feito' : d.treino.status, d.treino.ok ? COR.ok : COR.suave, 10);
+    }
+    if (d.pele) {
+      const b = bloco(linha, COR.cartao);
+      txt(b, 'SKINCARE', COR.suave, 8, 1);
+      const p = (n, x) => x.t ? `${n} ${x.f}/${x.t}${x.f >= x.t ? ' ✓' : ''}` : `${n} —`;
+      txt(b, p('Manhã', d.pele.manha), d.pele.manha.t && d.pele.manha.f >= d.pele.manha.t ? COR.ok : COR.texto, 11, 1);
+      txt(b, p('Noite', d.pele.noite), d.pele.noite.t && d.pele.noite.f >= d.pele.noite.t ? COR.ok : COR.texto, 11, 1);
+    }
+    w.addSpacer(8);
+  }
+
+  // tarefas
+  const cab = w.addStack(); cab.centerAlignContent();
+  txt(cab, d.tarefas.deHoje.length ? 'TAREFAS DE HOJE' : 'PRÓXIMAS TAREFAS', COR.suave, 9, 1); cab.addSpacer();
+  if (d.tarefas.deHoje.length) txt(cab, `${d.tarefas.deHoje.length} pendente${d.tarefas.deHoje.length > 1 ? 's' : ''}`, COR.suave, 9);
+  w.addSpacer(4);
+  const max = pequeno ? 3 : grande ? 6 : 2;
+  const lista = d.tarefas.deHoje.length ? d.tarefas.deHoje : d.tarefas.proximas;
+  if (!lista.length) txt(w, 'Nenhuma tarefa pendente ✓', COR.ok, 12);
+  for (const x of lista.slice(0, max)) {
     const s = w.addStack(); s.centerAlignContent(); s.spacing = 7;
-    if (fam !== 'small') s.url = `scriptable:///run/${encodeURIComponent(Script.name())}?marcar=${x.id}`;
+    if (!pequeno) s.url = `scriptable:///run/${encodeURIComponent(Script.name())}?marcar=${x.id}`;
     const late = x.data && x.data < dkey();
-    linha(s, '○', late ? COR.alerta : COR.salvia, 15);
-    linha(s, x.titulo, COR.texto, 13);
+    txt(s, '○', late ? COR.alerta : COR.salvia, 14);
+    txt(s, x.titulo, COR.texto, 12);
     s.addSpacer();
-    if (x.hora) linha(s, x.hora, COR.suave, 11);
-    w.addSpacer(5);
+    const info = [x.data && x.data !== dkey() ? dataCurta(x.data) : '', x.hora || ''].filter(Boolean).join(' · ');
+    if (info) txt(s, info, late ? COR.alerta : COR.suave, 10);
+    w.addSpacer(3);
   }
-  if (conta && fam !== 'small') {
+  if (lista.length > max) txt(w, `+ ${lista.length - max} no app`, COR.suave, 10);
+
+  // contas
+  if (!pequeno && d.contas.length) {
     w.addSpacer();
-    const c = w.addStack(); c.centerAlignContent();
-    linha(c, `Próxima conta: ${conta.nome}`, COR.texto, 11, true); c.addSpacer();
-    linha(c, `${brl(conta.valor)} · ${quando(conta.venc)}`, quando(conta.venc).startsWith('vencida') ? COR.alerta : COR.suave, 11);
-  }
+    const n = grande ? 3 : 1;
+    if (grande) { txt(w, 'PRÓXIMAS CONTAS', COR.suave, 9, 1); w.addSpacer(3); }
+    for (const c of d.contas.slice(0, n)) {
+      const s = w.addStack(); s.centerAlignContent();
+      txt(s, grande ? c.nome : `Próxima conta: ${c.nome}`, COR.texto, 11, 1); s.addSpacer();
+      const q = quando(c.venc);
+      txt(s, `${brl(c.valor)} · ${q}`, q.startsWith('vencida') || q === 'vence hoje' ? COR.alerta : COR.suave, 11);
+      w.addSpacer(2);
+    }
+  } else w.addSpacer();
   return w;
 }
 async function aviso(t, m) { const a = new Alert(); a.title = t; a.message = m; a.addAction('OK'); await a.presentAlert(); }
+async function dados(tk) {
+  const mes = dkey().slice(0, 7);
+  const [tar, fin, tre, pel, hist] = await Promise.all(['tarefas', 'financas', 'treinos', 'skincare', 'treinos-hist-' + mes].map(id => ler(id, tk).catch(() => null)));
+  return {
+    tarefas: tarefas(tar),
+    contas: (fin && fin.contas || []).filter(c => !c.pago).sort((a, b) => a.venc.localeCompare(b.venc)),
+    treino: treinoDeHoje(tre, hist),
+    pele: skincareDeHoje(pel)
+  };
+}
 
 /* ---------- execução ---------- */
 const params = args.queryParameters || {};
@@ -169,7 +231,7 @@ if (config.runsInApp && !params.marcar) {
   if (op === 1 || (op === 0 && !Keychain.contains(K_TOKEN))) await entrar();
   if (op !== -1 && Keychain.contains(K_TOKEN)) {
     const tk = await token();
-    const w = tk ? montar(tarefasDoDia(await ler('tarefas', tk)), proximaConta(await ler('financas', tk))) : montar([], null, 'Entre de novo com a sua conta.');
+    const w = tk ? montar(await dados(tk)) : montar(null, 'Entre de novo com a sua conta.');
     await w.presentLarge();
   }
 } else if (params.marcar) {
@@ -179,11 +241,8 @@ if (config.runsInApp && !params.marcar) {
 } else {
   const tk = await token();
   let w;
-  if (!tk) w = montar([], null, 'Abra este script no Scriptable para entrar.');
-  else {
-    try { w = montar(tarefasDoDia(await ler('tarefas', tk)), proximaConta(await ler('financas', tk))); }
-    catch (e) { w = montar([], null, 'Sem conexão agora.'); }
-  }
+  if (!tk) w = montar(null, 'Abra este script no Scriptable para entrar.');
+  else { try { w = montar(await dados(tk)); } catch (e) { w = montar(null, 'Sem conexão agora.'); } }
   Script.setWidget(w);
 }
 Script.complete();

@@ -25,7 +25,8 @@ a{color:var(--sage)}
 <body>
 <main>
   <h1>Widget do Meu Ritual</h1>
-  <p class="muted">Mostra suas tarefas de hoje e a próxima conta na Tela de Início. Toque numa tarefa para marcar como feita.</p>
+  <p class="muted">Mostra treino, skincare, tarefas e contas de hoje na Tela de Início, no modo claro. Toque numa tarefa para marcar como feita. Este script se atualiza sozinho: só precisa colar uma vez.</p>
+  <section class="card"><b>Já tem o widget instalado?</b> Abra o Scriptable, toque e segure o script <b>Meu Ritual</b> → <b>Edit</b>, apague todo o texto, cole o novo (botão abaixo) e toque em <b>Done</b>. Não precisa entrar de novo.</section>
   <section class="card"><ol>
     <li>Instale o app <b>Scriptable</b> na App Store (gratuito).</li>
     <li>Toque em <b>Copiar script</b> aqui embaixo.</li>
@@ -41,7 +42,7 @@ a{color:var(--sage)}
 </main>
 <script>
 const ta = document.getElementById('script'), bt = document.getElementById('copiar');
-fetch('meu-ritual-widget.js', {cache: 'no-store'}).then(r => r.text()).then(t => { ta.value = t; }).catch(() => { ta.value = 'Sem internet: abra esta página conectada.'; });
+fetch('carregador.js', {cache: 'no-store'}).then(r => r.text()).then(t => { ta.value = t; }).catch(() => { ta.value = 'Sem internet: abra esta página conectada.'; });
 bt.onclick = async () => {
   try { await navigator.clipboard.writeText(ta.value); bt.textContent = 'Copiado ✓ — agora cole no Scriptable'; }
   catch (e) { ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length); bt.textContent = 'Toque em Copiar no menu que apareceu'; }
