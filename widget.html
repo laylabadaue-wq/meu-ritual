@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Widget do Meu Ritual</title>
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--bg:#F6F1E9;--card:#FFFDF9;--ink:#38382F;--muted:#857C6F;--sage:#5D7256;--line:#E8DED0;--on:#FFFDF9}
+@media (prefers-color-scheme:dark){:root{--bg:#1B1915;--card:#25221D;--ink:#EFE8DC;--muted:#A99F90;--sage:#AFC2A2;--line:#3A342C;--on:#1B1915}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;
+  padding:max(20px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 40px max(16px,env(safe-area-inset-left))}
+main{max-width:560px;margin:auto;display:grid;gap:16px}
+h1{font:600 1.7rem/1.15 Georgia,serif;margin:0}
+.card{background:var(--card);border-radius:20px;padding:16px 18px}
+ol{margin:0;padding-left:20px;display:grid;gap:10px}
+li b{color:var(--sage)}
+.muted{color:var(--muted);font-size:.9rem}
+button{appearance:none;border:0;border-radius:999px;padding:14px 18px;font:600 1rem system-ui;background:var(--sage);color:var(--on);width:100%;cursor:pointer}
+textarea{width:100%;height:150px;border:1px solid var(--line);border-radius:14px;background:var(--bg);color:var(--ink);font:12px/1.4 ui-monospace,Menlo,monospace;padding:10px}
+a{color:var(--sage)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Widget do Meu Ritual</h1>
+  <p class="muted">Mostra suas tarefas de hoje e a próxima conta na Tela de Início. Toque numa tarefa para marcar como feita.</p>
+  <section class="card"><ol>
+    <li>Instale o app <b>Scriptable</b> na App Store (gratuito).</li>
+    <li>Toque em <b>Copiar script</b> aqui embaixo.</li>
+    <li>Abra o Scriptable, toque no <b>+</b> (canto de cima), cole o texto e toque no nome "Untitled Script" no topo para renomear para <b>Meu Ritual</b>. Toque em <b>Done</b>.</li>
+    <li>Toque no script <b>Meu Ritual</b> para rodar e escolha <b>Entrar</b>: use o e-mail e a senha da sua conta do app (Ajustes → Conta). A senha não fica guardada, só uma chave de acesso no Chaveiro do iPhone.</li>
+    <li>Na Tela de Início, segure num espaço vazio → <b>Editar</b> → <b>Adicionar Widget</b> → <b>Scriptable</b> → escolha o tamanho <b>médio</b> ou <b>grande</b> → <b>Adicionar Widget</b>.</li>
+    <li>Segure o widget → <b>Editar Widget</b> → em <b>Script</b> escolha <b>Meu Ritual</b>. Em "When Interacting", deixe <b>Run Script</b>.</li>
+  </ol></section>
+  <button id="copiar">Copiar script</button>
+  <textarea id="script" readonly aria-label="Script do widget">Carregando…</textarea>
+  <p class="muted">Ao tocar numa tarefa, o Scriptable abre por um instante, marca a tarefa e mostra "Feito". Volte para a Tela de Início: o iPhone atualiza o widget em alguns minutos (é ele quem decide a hora).</p>
+  <p class="muted"><a href="./">Voltar para o Meu Ritual</a></p>
+</main>
+<script>
+const ta = document.getElementById('script'), bt = document.getElementById('copiar');
+fetch('meu-ritual-widget.js', {cache: 'no-store'}).then(r => r.text()).then(t => { ta.value = t; }).catch(() => { ta.value = 'Sem internet: abra esta página conectada.'; });
+bt.onclick = async () => {
+  try { await navigator.clipboard.writeText(ta.value); bt.textContent = 'Copiado ✓ — agora cole no Scriptable'; }
+  catch (e) { ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length); bt.textContent = 'Toque em Copiar no menu que apareceu'; }
+};
+</script>
+</body>
+</html>
