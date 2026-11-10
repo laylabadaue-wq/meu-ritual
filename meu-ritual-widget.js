@@ -128,7 +128,7 @@ async function marcar(id, tk) {
   if (!x) return 'Essa tarefa não existe mais.';
   if (!x.feito) {
     x.feito = true; x.feitoEm = Date.now();
-    const n = proxima(x); if (n) doc.itens.push(n);
+    const n = proxima(x); if (n) doc.itens.push({...n, origem: x.id});
   }
   doc.savedAt = Date.now(); // o app usa isso para saber qual versão é a mais nova
   const r = await gravar('tarefas', doc, tk);
