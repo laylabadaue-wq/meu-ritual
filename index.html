@@ -216,6 +216,9 @@ nav.tabs a[aria-current="page"] .ic{stroke-width:1.9}
 .stepper{display:flex;align-items:center;justify-content:center;gap:2px}
 .stepper button{width:38px;height:38px;border-radius:50%;border:0;background:var(--surface);font-size:1.2rem;cursor:pointer;display:grid;place-items:center}
 .reps-in{width:50px;text-align:center;font:500 1.5rem var(--f-display);border:0;background:transparent;color:var(--ink);font-variant-numeric:tabular-nums;-moz-appearance:textfield;padding:0}
+.kg-in{width:52px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--ink);font:500 .9rem var(--f-body,inherit);padding:2px 0;text-align:center;-moz-appearance:textfield}
+.kg-in::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.kg-l{display:flex;align-items:center;gap:3px;font-size:.78rem;color:var(--muted)}
 .reps-in::-webkit-inner-spin-button,.reps-in::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .un{font-size:.72rem;color:var(--muted);margin-left:2px}
 .check{width:48px;height:48px;border-radius:50%;border:1.5px solid var(--sand-2);background:var(--surface);display:grid;place-items:center;cursor:pointer;color:transparent;transition:background .2s,border-color .2s,color .2s}
@@ -532,7 +535,7 @@ const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e)
    "cabelo", "cabelo-evo-<id>", "perfil"). Na conta: data/users/<id>/<doc> (privado).
    Espelhado no navegador: abre na hora e funciona sem conexão. */
 const CACHE = 'meu-ritual:v1';
-const APP_VERSAO = '26'; // o montar_site.py troca pelo número da versão do site
+const APP_VERSAO = '27'; // o montar_site.py troca pelo número da versão do site
 /* IndexedDB: guarda tudo no aparelho com bem mais espaço que o localStorage (fotos incluídas) */
 const IDB = {
   db: null,
@@ -687,14 +690,15 @@ function contaHtml(st) {
   if (!Nuvem.auth) return `<div class="f"><span>Conta</span><p class="muted sm" style="font-weight:400">Conectando… (precisa de internet na primeira vez)</p></div>`;
   if (Nuvem.user) return `<div class="f"><span>Conta</span>
     <p class="note">Conectada como <b>${esc(Nuvem.user.email)}</b>. Seus dados ficam salvos na sua conta e aparecem em qualquer aparelho em que você entrar.</p>
-    <button class="btn ghost" data-act="ctSair">Sair da conta neste aparelho</button></div>`;
+    <button class="btn ghost" data-act="ctSair">Sair da conta neste aparelho</button>
+    <div class="row" style="justify-content:space-between"><button class="btn link sm" data-act="privacidade">Privacidade</button><button class="btn link sm" style="color:var(--danger)" data-act="ctExcluir">Excluir minha conta</button></div></div>`;
   return `<div class="f"><span>Conta</span>
     <p class="muted sm" style="font-weight:400">Entre para salvar seus dados na nuvem. O que já está neste aparelho vai junto para a conta.</p>
     <input class="t" id="ct-email" type="email" inputmode="email" autocomplete="email" data-bind="email" value="${esc(st.email || '')}" placeholder="seu e-mail">
     <input class="t" id="ct-senha" type="password" autocomplete="current-password" data-bind="senha" value="${esc(st.senha || '')}" placeholder="senha (mínimo 6 caracteres)">
     ${st.ctErr ? `<p class="note warn">${esc(st.ctErr)}</p>` : ''}${st.ctOk ? `<p class="note">${esc(st.ctOk)}</p>` : ''}
     <div class="row-btns"><button class="btn primary" data-act="ctEntrar" ${st.ctBusy ? 'disabled' : ''}>Entrar</button><button class="btn ghost" data-act="ctCriar" ${st.ctBusy ? 'disabled' : ''}>Criar conta</button></div>
-    <button class="btn link sm" data-act="ctSenha">Esqueci a senha</button></div>`;
+    <div class="row" style="justify-content:space-between"><button class="btn link sm" data-act="ctSenha">Esqueci a senha</button><button class="btn link sm" data-act="privacidade">Privacidade</button></div></div>`;
 }
 /* ---------- Fotos ----------
    Na conta: arquivo enviado ao armazenamento do app ({id, url}). Sem conta: imagem reduzida
@@ -798,11 +802,24 @@ function produtoForm(st) {
     <div class="f"><span>Categoria</span><div class="chips wrap">${catsDe(st.tipo).map(k => `<button class="chip" aria-pressed="${st.cat === k}" data-act="fpCat" data-c="${k}">${CATS[k][0]}</button>`).join('')}</div></div>
     <label class="f">Finalidade<input class="t" id="fp-fin" data-bind="finalidade" value="${esc(st.finalidade)}" placeholder="Ex.: controle de oleosidade" maxlength="60"></label>
     <label class="f">Observações pessoais<textarea class="t" id="fp-obs" data-bind="obs" rows="2" placeholder="Como usar, o que achou…">${esc(st.obs)}</textarea></label>
+    <div class="f"><span>Validade (opcional)</span><p class="muted sm" style="font-weight:400">Na embalagem, o potinho aberto com "6M" ou "12M" indica os meses de validade depois de aberto.</p>
+      <div class="row-btns"><label class="f" style="margin:0">Aberto em<input class="t" id="fp-aberto" type="date" data-bind="aberto" value="${esc(st.aberto || '')}"></label>
+      <label class="f" style="margin:0">Meses de validade<input class="t" id="fp-val" type="number" inputmode="numeric" min="1" max="60" data-bind="validade" value="${esc(String(st.validade || ''))}" placeholder="Ex.: 12"></label></div></div>
+    <div class="f"><span>Estoque</span><div class="chips"><button class="chip" aria-pressed="${!!st.acabando}" data-act="fpAcabando">Está acabando</button></div></div>
     ${st.err ? `<p class="note warn">${esc(st.err)}</p>` : ''}
     <div class="row-btns">${st.id && !st.novo ? `<button class="btn danger" data-act="fpExcluir">Excluir</button>` : ''}<button class="btn primary" data-act="fpSalvar">${esc(st.okLabel || 'Salvar produto')}</button></div>`;
 }
+/* validade depois de aberto + "está acabando" */
+function prodAlerta(p) {
+  if (p.aberto && p.validade) {
+    const [y, m, d] = p.aberto.split('-').map(Number), fim = new Date(y, m - 1 + +p.validade, d), n = Math.round((fim - new Date(new Date().toDateString())) / 864e5);
+    if (n < 0) return {txt: `Venceu há ${plural(-n, 'dia')}`, grave: true};
+    if (n <= 30) return {txt: n ? `Vence em ${plural(n, 'dia')}` : 'Vence hoje', grave: n <= 7};
+  }
+  return p.acabando ? {txt: 'Está acabando'} : null;
+}
 function abrirProduto(preset = {}, opts = {}) {
-  const base = {id: null, nome: '', marca: '', tipo: 'pele', cat: '', finalidade: '', obs: '', foto: null};
+  const base = {id: null, nome: '', marca: '', tipo: 'pele', cat: '', finalidade: '', obs: '', foto: null, aberto: '', validade: '', acabando: false};
   const st = Object.assign(base, clone(preset), {okLabel: opts.okLabel, onSave: opts.onSave});
   if (preset.cat && CATS[preset.cat]) st.tipo = CATS[preset.cat][1];
   if (!st.cat || CATS[st.cat][1] !== st.tipo) st.cat = catsDe(st.tipo)[0];
@@ -1139,6 +1156,34 @@ Object.assign(App.actions, {
     try { await Nuvem.auth.sendPasswordResetEmail(email); st.ctOk = 'Enviei um e-mail para você criar uma senha nova (confira também o spam).'; }
     catch (e) { st.ctErr = Nuvem.erro(e); }
     Sheet.refresh(); },
+  privacidade: () => Sheet.open({title: 'Privacidade', render: () => `
+    <div class="howto"><h3>O que o app guarda</h3><p class="sm">O que você mesma cadastra: treinos e histórico, rotinas de pele e cabelo, produtos, lista de desejos, tarefas, contas e as fotos que escolher. Se criar uma conta, também o seu e-mail.</p></div>
+    <div class="howto"><h3>Onde fica</h3><p class="sm">Sem conta, tudo fica só neste aparelho. Com conta, uma cópia fica no Firebase (serviço do Google, em servidores no Brasil) para aparecer nos seus outros aparelhos. A senha nunca é guardada pelo app.</p></div>
+    <div class="howto"><h3>Quem vê</h3><p class="sm">Só você. Cada conta só consegue ler os próprios dados. Nada é vendido, compartilhado ou usado para anúncios, e o app não tem rastreadores.</p></div>
+    <div class="howto"><h3>Como apagar</h3><p class="sm">Em Ajustes: "Apagar todos os dados" limpa tudo, e "Excluir minha conta" apaga para sempre a conta e o que está salvo nela.</p></div>
+    <button class="btn primary block" data-act="ajustes">Voltar aos Ajustes</button>`}),
+  ctExcluir: () => Sheet.open({title: 'Excluir minha conta', state: {senha: '', err: '', busy: false}, render: st => `
+    <p class="note warn">Isso apaga para sempre a sua conta e tudo o que está salvo nela, neste e nos outros aparelhos. Não dá para desfazer. Se quiser guardar algo, baixe um backup antes.</p>
+    <label class="f">Digite sua senha para confirmar<input class="t" id="cx-senha" type="password" autocomplete="current-password" data-bind="senha" value="${esc(st.senha || '')}"></label>
+    ${st.err ? `<p class="note warn">${esc(st.err)}</p>` : ''}
+    <div class="row-btns"><button class="btn ghost" data-act="ajustes">Cancelar</button><button class="btn danger" data-act="ctExcluirOk" ${st.busy ? 'disabled' : ''}>${st.busy ? 'Excluindo…' : 'Excluir tudo'}</button></div>`}),
+  ctExcluirOk: async () => {
+    const st = Sheet.st, u = Nuvem.user; if (!u) return;
+    st.err = ''; st.busy = true; Sheet.refresh();
+    const col = Nuvem.fs.collection('users').doc(u.uid).collection('docs');
+    try {
+      await u.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(u.email, st.senha || ''));
+      Store.desligar(); // para o app não reenviar nada enquanto apaga
+      const snap = await col.get();
+      await Promise.all(snap.docs.map(d => d.ref.delete()));
+      await u.delete();
+      Store.docs = {perfil: {semeado: true}}; Store.cacheNow(); Timer.stop();
+      Sheet.close(); toast('Conta e dados excluídos'); App.go('hoje');
+    } catch (e) {
+      if (Nuvem.user && !Store.col) Store.ligar(col);
+      st.err = Nuvem.erro(e); st.busy = false; if (Sheet.st === st) Sheet.refresh();
+    }
+  },
   ctSair: () => Sheet.confirm({title: 'Sair da conta?', text: 'Seus dados continuam salvos na conta e também ficam neste aparelho. O que você mudar sem estar conectada não vai para a nuvem até entrar de novo.', ok: 'Sair',
     onOk: async () => { try { await Nuvem.auth.signOut(); toast('Você saiu da conta'); } catch (e) { toast(Nuvem.erro(e)); } }}),
   ajImportar: d => {
@@ -1169,11 +1214,13 @@ Object.assign(App.actions, {
   fotoTirar: () => { Sheet.st.foto = null; Sheet.refresh(); },
   fpTipo: d => { const st = Sheet.st; st.tipo = d.t; st.cat = catsDe(d.t)[0]; Sheet.refresh(); },
   fpCat: d => { Sheet.st.cat = d.c; Sheet.refresh(); },
+  fpAcabando: () => { Sheet.st.acabando = !Sheet.st.acabando; Sheet.refresh(); },
   fpSalvar: () => {
     const st = Sheet.st, nome = (st.nome || '').trim();
     if (!nome) { st.err = 'Dê um nome ao produto.'; return Sheet.refresh(); }
     if (st.enviando) { st.err = 'Espere a foto terminar de enviar.'; return Sheet.refresh(); }
-    const p = {id: st.id || uid(), nome, marca: (st.marca || '').trim(), cat: st.cat, finalidade: (st.finalidade || '').trim(), obs: (st.obs || '').trim(), foto: st.foto || null};
+    const p = {id: st.id || uid(), nome, marca: (st.marca || '').trim(), cat: st.cat, finalidade: (st.finalidade || '').trim(), obs: (st.obs || '').trim(), foto: st.foto || null,
+      aberto: st.aberto || '', validade: Math.min(60, Math.max(0, parseInt(st.validade, 10) || 0)) || '', acabando: !!st.acabando};
     const dup = Produtos.duplicado(p);
     if (dup) { st.err = `"${dup.nome}"${dup.marca ? ' de ' + dup.marca : ''} já está na sua coleção.`; return Sheet.refresh(); }
     const novo = !Produtos.get(p.id), onSave = st.onSave;
@@ -1203,9 +1250,13 @@ function viewHome() {
     <p class="sync" id="sync"></p>`;
 }
 /* Tela inicial organizável: cada bloco tem um id; a ordem e os ocultos ficam no perfil. */
-const HOME_NOMES = {treinos: 'Treino de hoje', skincare: 'Skincare de hoje', cabelo: 'Próximo tratamento capilar', financas: 'Próxima conta', progresso: 'Progresso da semana', tarefas: 'Minhas tarefas'};
+const HOME_NOMES = {resumo: 'Resumo da semana (aos domingos)', treinos: 'Treino de hoje', skincare: 'Skincare de hoje', cabelo: 'Próximo tratamento capilar', financas: 'Próxima conta', progresso: 'Progresso da semana', tarefas: 'Minhas tarefas'};
 function homeBlocos(p, prog, media) {
   const blocos = [
+    {id: 'resumo', html: () => { // aos domingos: fechamento da semana
+      const ls = new Date().getDay() === 0 ? App.mods.filter(m => m.resumo).flatMap(m => m.resumo()) : [];
+      return ls.length ? `<section class="card sage"><p class="eyebrow">Domingo</p><h2>Resumo da semana</h2>
+        <dl class="kv" style="margin-top:10px">${ls.map(([l, v]) => `<dt style="color:inherit;opacity:.8">${esc(l)}</dt><dd><b>${esc(String(v))}</b></dd>`).join('')}</dl></section>` : ''; }},
     ...App.mods.filter(m => m.home).map(m => ({id: m.id, html: () => m.home()})),
     {id: 'progresso', html: () => prog.length ? `<section class="card"><h3>Seu progresso da semana</h3><div class="rings">
       ${prog.map(x => `<div class="rg">${ring(x.pct, 74, 4, x.valor)}<span>${x.label}</span></div>`).join('')}
@@ -1274,8 +1325,9 @@ function openAjustes() {
       ? 'Seus dados e fotos ficam salvos na sua conta e aparecem em qualquer aparelho em que você abrir este app pelo mesmo link.'
       : 'Seus dados e fotos ficam salvos neste aparelho, mesmo fechando o app. Baixe um backup de vez em quando (por exemplo, uma vez por mês) e guarde no app Arquivos ou no iCloud: se trocar de celular ou apagar os dados do Safari, é com ele que você recupera tudo.'}</p>
     <div class="f"><span>Backup</span><p class="muted sm" style="font-weight:400">${Store.mode === 'cloud' ? 'Copie tudo para guardar onde quiser. Para restaurar, cole um backup no campo e toque em Restaurar. Fotos salvas na conta entram como link.' : 'O arquivo de backup leva tudo, inclusive as fotos.'}</p></div>
-    ${Store.mode === 'local' ? `<button class="btn primary" data-act="ajBaixar">${ic('down')} Baixar backup</button>
-      <button class="btn ghost" data-act="ajArquivo">Restaurar de um arquivo</button>` : ''}
+    ${Nuvem.user ? `<p class="note">Backup automático: com o widget do Scriptable instalado, todo mês um arquivo "Meu Ritual backup" é salvo sozinho no iCloud Drive, na pasta Scriptable.</p>` : ''}
+    ${window.claude ? '' : `<button class="btn ${Store.mode === 'local' ? 'primary' : 'ghost'}" data-act="ajBaixar">${ic('down')} Baixar backup</button>
+      <button class="btn ghost" data-act="ajArquivo">Restaurar de um arquivo</button>`}
     <button class="btn ghost" data-act="ajCopiar">${ic('copy')} Copiar backup como texto</button>
     <textarea class="t" id="aj-backup" data-bind="backup" rows="3" placeholder="Cole aqui um backup para restaurar">${esc(st.backup)}</textarea>
     ${st.err ? `<p class="note warn">${esc(st.err)}</p>` : ''}
@@ -1936,7 +1988,7 @@ function viewSessao() {
   if (!(a.aberto >= 0 && a.aberto < a.itens.length)) a.aberto = 0;
   const i = a.aberto, it = a.itens[i], p = T.prog(a), n = a.itens.length;
   const done = it.pulado ? it.series.length : it.series.filter(x => x.feito).length;
-  const prox = it.series.findIndex(x => !x.feito);
+  const prox = it.series.findIndex(x => !x.feito), ult = sessoesDe(histKey(it))[0];
   return `<header class="top sub"><button class="icon-btn" data-act="go" data-r="treinos" aria-label="Sair da tela do treino">${ic('back')}</button>
     <div style="text-align:center"><p class="eyebrow" style="margin:0">${esc(a.nome)}</p><span class="sm muted"><span id="elapsed">${fmtDur(Date.now() - a.inicio)}</span> · ${p.feitas}/${p.total} séries</span></div>
     <button class="icon-btn" data-act="sLista" aria-label="Ver todos os exercícios">${ic('book')}</button></header>
@@ -1946,9 +1998,11 @@ function viewSessao() {
     <div><h1 style="font-size:2.1rem">${esc(it.nome)}</h1>
       <p class="sm muted" style="margin-top:4px">${prox >= 0 ? `Série ${prox + 1} de ${it.series.length}` : 'Séries concluídas'} · ${it.reps} ${UN[it.unid]}${it.descanso ? ` · descanso ${fmtRest(it.descanso)}` : ''}</p>
       ${it.obs ? `<p class="obs">${esc(it.obs)}</p>` : ''}
-      <div class="row" style="gap:16px">${it.libId && LIB[it.libId] ? `<button class="btn link sm" data-act="sComo" data-k="${it.libId}">Como fazer?</button>` : ''}
+      ${it.troca ? `<p class="sm muted" style="margin-top:4px">Só hoje, no lugar de ${esc(it.orig.nome)}.</p>` : ''}
+      ${ult ? `<button class="note" style="all:unset;display:block;cursor:pointer;margin-top:8px" data-act="sEvo" data-i="${i}"><span class="note sm" style="display:block">Última vez (${fmtData(new Date(ult.quando))}): <b>${esc(fmtFeitas(ult.it))}</b> · ver evolução</span></button>` : ''}
+      <div class="row" style="gap:6px 16px;flex-wrap:wrap">${it.libId && LIB[it.libId] ? `<button class="btn link sm" data-act="sComo" data-k="${it.libId}">Como fazer?</button>` : ''}
       <button class="btn link sm" data-act="sRest" data-i="${i}">${ic('clock')} Alterar descanso</button>
-      ${it.pulado ? '' : `<button class="btn link sm" data-act="sPular" data-i="${i}">${ic('skip')} Pular hoje</button>`}</div></div>
+      ${it.pulado ? '' : `<button class="btn link sm" data-act="sTrocar" data-i="${i}">${ic('reset')} Substituir hoje</button><button class="btn link sm" data-act="sPular" data-i="${i}">${ic('skip')} Pular hoje</button>`}</div></div>
     ${it.pulado ? `<div class="card soft"><p class="sm">Você pulou este exercício hoje. Ele não conta no treino nem no histórico.</p>
       <button class="btn sand block" style="margin-top:10px" data-act="sPular" data-i="${i}">Fazer mesmo assim</button></div>`
       : `<div class="sets">${it.series.map((se, j) => setRow(it, i, se, j)).join('')}</div>`}
@@ -1963,7 +2017,8 @@ function viewSessao() {
 }
 function setRow(it, i, se, j) {
   const v = se.reps ?? it.reps, d = se.feito ? v - it.reps : 0;
-  return `<div class="set ${se.feito ? 'feito' : ''}"><div class="n">Série ${j + 1}${d < 0 ? `<span class="delta menos" title="Abaixo do planejado">${d}</span>` : d > 0 ? `<span class="delta mais">+${d}</span>` : ''}</div>
+  return `<div class="set ${se.feito ? 'feito' : ''}"><div class="n">Série ${j + 1}${d < 0 ? `<span class="delta menos" title="Abaixo do planejado">${d}</span>` : d > 0 ? `<span class="delta mais">+${d}</span>` : ''}
+      ${usaKg(it) ? `<label class="kg-l"><input class="kg-in" type="number" inputmode="decimal" step="0.5" min="0" value="${se.kg ?? ''}" placeholder="–" data-chg="sKg" data-i="${i}" data-j="${j}" aria-label="Carga em quilos na série ${j + 1}">kg</label>` : ''}</div>
     <div class="stepper"><button data-act="sMenos" data-i="${i}" data-j="${j}" aria-label="Diminuir">−</button>
     <input class="reps-in" id="r-${i}-${j}" type="number" inputmode="numeric" min="0" value="${v}" data-chg="sReps" data-i="${i}" data-j="${j}" aria-label="${UN[it.unid]} feitas na série ${j + 1}">
     <button data-act="sMais" data-i="${i}" data-j="${j}" aria-label="Aumentar">+</button><span class="un">${UN[it.unid]}</span></div>
@@ -1976,8 +2031,8 @@ function resumoSessao(x) {
 }
 function paraSalvar(a) {
   return {id: a.id, treinoId: a.treinoId, nome: a.nome, inicio: a.inicio, fim: Date.now(),
-    itens: a.itens.filter(it => !it.pulado).map(it => ({exId: it.exId, nome: it.nome, grupo: it.grupo, reps: it.reps, unid: it.unid, plan: it.series.length,
-      feitas: it.series.map(s => s.feito ? (s.reps ?? it.reps) : null)}))};
+    itens: a.itens.filter(it => !it.pulado).map(it => ({exId: histKey(it), nome: it.nome, grupo: it.grupo, reps: it.reps, unid: it.unid, plan: it.series.length,
+      feitas: it.series.map(s => s.feito ? (s.reps ?? it.reps) : null), kg: it.series.map(s => s.feito ? (s.kg ?? null) : null)}))};
 }
 setInterval(() => { const el = $('#elapsed'), s = T.st(); if (el && s && s.ativa) el.textContent = fmtDur(Date.now() - s.ativa.inicio); }, 20000);
 document.addEventListener('visibilitychange', () => { const s = T.st(); if (document.visibilityState === 'visible' && s && s.ativa && App.route() === 'sessao') Wake.on(); });
@@ -2064,7 +2119,7 @@ function viewHistorico(s) {
     return `<div style="display:flex;gap:6px;align-items:flex-start"><button class="hrow" style="flex:1;min-width:0" data-act="hAbrir" data-id="${x.id}" aria-expanded="${open}"><div class="between"><div class="grow"><h3>${esc(x.nome)}</h3>
       <p class="sm muted">${DIA_CURTO[new Date(x.inicio).getDay()]}, ${fmtData(new Date(x.inicio))} · ${fmtDur(x.fim - x.inicio)} · ${r.feitas}/${r.total} séries</p></div>
       <span class="pct" style="color:${r.pct >= 100 ? 'var(--ok)' : r.pct >= 80 ? 'var(--ink)' : 'var(--warn)'}">${r.pct}%</span></div>
-      ${open ? `<div class="hdet">${x.itens.map(it => `<div><span>${esc(it.nome)}</span><span>${it.feitas.map(v => v == null ? '–' : v).join(' · ')} <small>de ${it.plan}×${it.reps}</small></span></div>`).join('')}</div>` : ''}</button>
+      ${open ? `<div class="hdet">${x.itens.map(it => `<div><span>${esc(it.nome)}</span><span>${fmtFeitas(it)} <small>de ${it.plan}×${it.reps}</small></span></div>`).join('')}</div>` : ''}</button>
       <button class="icon-btn" style="color:var(--danger);margin-top:6px" data-act="hExcluir" data-id="${x.id}" aria-label="Apagar ${esc(x.nome)}">${ic('trash')}</button></div>`; }).join('');
   return `<div class="tiles">
       <div class="tile"><b>${H.length}</b><span>treinos realizados</span></div>
@@ -2088,9 +2143,15 @@ function viewHistorico(s) {
 
 /* ----- ações ----- */
 const falta = x => !x.pulado && x.series.some(y => !y.feito);
+const usaKg = it => (it.unid || 'reps') === 'reps' && it.grupo !== 'cardio';
+const fmtKg = k => String(k).replace('.', ',');
+const histKey = it => it.troca ? 'lib:' + it.libId : it.exId; // exercício trocado só hoje tem histórico próprio
+const fmtFeitas = it => it.feitas.map((v, j) => v == null ? '–' : it.kg && it.kg[j] != null ? `${fmtKg(it.kg[j])}kg×${v}` : v).join(' · ');
+const sessoesDe = key => T.hist().map(x => ({quando: x.inicio, it: x.itens.find(i => i.exId === key && i.feitas.some(v => v != null))})).filter(x => x.it);
+const kgAnterior = key => { const u = sessoesDe(key)[0], ks = u && u.it.kg ? u.it.kg.filter(v => v != null) : []; return j => !ks.length ? null : (u.it.kg[j] ?? ks[ks.length - 1]); };
 const emCurso = (s, t) => !!(s.ativa && s.ativa.treinoId === t.id);
 const baseEx = e => ({nome: e.nome, grupo: e.grupo, reps: e.reps, unid: e.unid || 'reps', descanso: e.descanso || 0, obs: e.obs || '', libId: e.libId || '', series: e.series});
-const novoItem = e => { const b = baseEx(e); return {exId: e.id, ...b, series: Array.from({length: b.series}, () => ({feito: false, reps: null})), base: b}; };
+const novoItem = e => { const b = baseEx(e), kg = usaKg(b) ? kgAnterior(e.id) : () => null; return {exId: e.id, ...b, series: Array.from({length: b.series}, (_, j) => ({feito: false, reps: null, kg: kg(j)})), base: b}; };
 /* editou a ficha com o treino em andamento: o treino segue a ficha nova sem perder as séries já feitas.
    Só muda o que mudou na ficha, então um descanso ajustado só para hoje continua valendo. */
 function sincAtiva(s) {
@@ -2134,6 +2195,12 @@ function iniciar(t, s) {
 App.module({
   id: 'treinos', nav: {route: 'treinos', label: 'Treinos', icon: 'dumbbell'},
   routes: {treinos: viewTreinos, sessao: viewSessao, exercicio: viewExercicio, ficha: viewFicha}, navAs: 'treinos', home, progresso,
+  resumo: () => {
+    const s = T.st(); if (!s) return [];
+    const ini = semana()[0].getTime(), H = T.hist().filter(x => x.inicio >= ini), m = metasDe(s), c = semanaTipos(T.hist(), ini, ini + 7 * 864e5);
+    return [['Treinos feitos', H.length ? `${H.length} · ${fmtDur(H.reduce((a, x) => a + (x.fim - x.inicio), 0))}` : '0'],
+      ...[['musculacao', 'Musculação'], ['abdomen', 'Abdômen'], ['cardio', 'Cardio']].filter(([k]) => m[k]).map(([k, l]) => [l, `${c[k]}/${m[k]}${c[k] >= m[k] ? ' ✓' : ''}`])];
+  },
   actions: {
     fichaAbrir: d => { ui.fichaSel = d.id; ui.fichaModo = 'ver'; App.go('ficha'); },
     fichaEditar: d => { ui.fichaSel = d.id; ui.fichaModo = 'editar'; App.go('ficha'); window.scrollTo(0, 0); },
@@ -2258,6 +2325,41 @@ App.module({
           <span class="grow"><h3>${esc(it.nome)}</h3><p class="sm muted">${it.pulado ? 'pulado hoje' : `${f}/${it.series.length} séries`}${i === a.aberto ? ' · atual' : ''}</p></span>${f === it.series.length ? `<span style="color:var(--ok)">${ic('check')}</span>` : ''}</button>`; }).join('')}</div>
         <div class="row-btns"><button class="btn ghost" data-act="sDescartar">Descartar treino</button><button class="btn primary" data-act="sFinalizar">Finalizar treino</button></div>`});
     },
+    sKg: (d, el) => {
+      const s = T.st(), it = s.ativa.itens[+d.i], j = +d.j, v = parseFloat(String(el.value).replace(',', '.')), kg = Number.isFinite(v) && v >= 0 ? v : null;
+      it.series.forEach((se, k) => { if (k === j || (k > j && !se.feito)) se.kg = kg; }); // vale para as próximas séries ainda não feitas
+      T.save(s);
+    },
+    sEvo: d => {
+      const it = T.st().ativa.itens[+d.i], ss = sessoesDe(histKey(it)).slice(0, 12).reverse();
+      const val = x => { const ks = (x.it.kg || []).filter(v => v != null); return ks.length ? Math.max(...ks) : Math.max(...x.it.feitas.filter(v => v != null)); };
+      const temKg = ss.some(x => (x.it.kg || []).some(v => v != null)), vs = ss.map(val), mn = Math.min(...vs), mx = Math.max(...vs);
+      const pts = vs.map((v, k) => [vs.length > 1 ? 12 + k * 276 / (vs.length - 1) : 150, mx === mn ? 40 : 70 - (v - mn) * 60 / (mx - mn)]);
+      Sheet.open({title: `Evolução · ${it.nome}`, render: () => `
+        <p class="sm muted">${temKg ? 'Maior carga' : 'Mais repetições'} em cada treino: de <b>${fmtKg(vs[0])}</b> para <b>${fmtKg(vs[vs.length - 1])}</b>${temKg ? ' kg' : ''}.</p>
+        <svg viewBox="0 0 300 80" style="width:100%;height:auto" role="img" aria-label="Gráfico de evolução"><polyline fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="${pts.map(p => p.map(n => n.toFixed(1)).join(',')).join(' ')}"/>
+          ${pts.map(p => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="var(--accent)"/>`).join('')}</svg>
+        <div class="hdet">${ss.slice().reverse().map(x => `<div><span>${fmtData(new Date(x.quando))}</span><span>${esc(fmtFeitas(x.it))}</span></div>`).join('')}</div>`});
+    },
+    sTrocar: d => {
+      const it = T.st().ativa.itens[+d.i], ops = Object.values(LIB).filter(x => x.g === it.grupo && x.k !== it.libId).sort((a, b) => a.n.localeCompare(b.n));
+      Sheet.open({title: 'Substituir só hoje', render: () => `<p class="sm muted">Troca este exercício só neste treino. A ficha continua igual.</p>
+        ${it.troca ? `<button class="btn sand block" data-act="sDestrocar" data-i="${d.i}">Voltar para ${esc(it.orig.nome)}</button>` : ''}
+        <div class="list">${ops.map(x => `<button class="item" data-act="sTrocarOk" data-i="${d.i}" data-k="${x.k}">${thumb(x.k)}<span class="grow"><h3>${esc(x.n)}</h3><p class="sm muted">${esc(x.eq || '')}</p></span></button>`).join('') || '<p class="muted sm">Não há outro exercício desse grupo na biblioteca.</p>'}</div>`});
+    },
+    sTrocarOk: d => {
+      const s = T.st(), it = s.ativa.itens[+d.i], x = LIB[d.k];
+      if (!it.orig) it.orig = {nome: it.nome, libId: it.libId};
+      it.nome = x.n; it.libId = x.k; it.troca = true;
+      const kg = kgAnterior(histKey(it)); it.series.forEach((se, j) => { if (!se.feito) se.kg = kg(j); });
+      T.save(s); Sheet.close(); toast(`Hoje: ${x.n}`);
+    },
+    sDestrocar: d => {
+      const s = T.st(), it = s.ativa.itens[+d.i];
+      it.nome = it.orig.nome; it.libId = it.orig.libId; delete it.troca; delete it.orig;
+      const kg = kgAnterior(histKey(it)); it.series.forEach((se, j) => { if (!se.feito) se.kg = kg(j); });
+      T.save(s); Sheet.close();
+    },
     sPular: d => {
       const s = T.st(), a = s.ativa, i = +d.i, it = a.itens[i];
       it.pulado = !it.pulado;
@@ -2299,7 +2401,7 @@ App.module({
       Sheet.open({title: 'Finalizar treino', render: () => `
         <div class="sum-grid"><div><b>${fmtDur(x.fim - x.inicio)}</b><span>duração</span></div><div><b>${r.feitas}/${r.total}</b><span>séries</span></div><div><b>${r.pct}%</b><span>do planejado</span></div></div>
         ${pend ? `<p class="note warn">${plural(pend, 'série não marcada', 'séries não marcadas')} ${pend === 1 ? 'ficará registrada' : 'ficarão registradas'} como não ${pend === 1 ? 'feita' : 'feitas'}.</p>` : ''}
-        <div class="hdet">${x.itens.map(it => `<div><span>${esc(it.nome)}</span><span>${it.feitas.map(v => v == null ? '–' : v).join(' · ')} <small>de ${it.plan}×${it.reps}</small></span></div>`).join('')}</div>
+        <div class="hdet">${x.itens.map(it => `<div><span>${esc(it.nome)}</span><span>${fmtFeitas(it)} <small>de ${it.plan}×${it.reps}</small></span></div>`).join('')}</div>
         <div class="row-btns"><button class="btn ghost" data-act="sheetClose">Continuar treinando</button><button class="btn primary" data-act="sSalvar">Salvar treino</button></div>
         <button class="btn link sm" style="color:var(--danger)" data-act="sDescartar">Cancelar treino sem salvar</button>`});
     },
@@ -2471,6 +2573,7 @@ const addStep = prodId => { const s = K.st(); K.ensure(s, ui.kDia, ui.kPer).push
 App.module({
   id: 'skincare', nav: {route: 'pele', label: 'Pele', icon: 'drop', area: 'beleza'},
   routes: {pele: viewPele}, home, progresso,
+  resumo: () => { const p = progresso(); return p ? [['Dias de skincare completo', p.valor]] : []; },
   actions: {
     kDia: d => { ui.kDia = +d.d; App.render(); },
     kPer: d => { ui.kPer = d.p; App.render(); },
@@ -2715,11 +2818,15 @@ const ui = App.ui;
 ui.colTipo = ui.colTipo || 'todos';
 function viewColecao() {
   const todos = Produtos.lista(), ps = ui.colTipo === 'todos' ? todos : Produtos.lista(ui.colTipo);
+  const atencao = todos.map(p => [p, prodAlerta(p)]).filter(x => x[1]);
   const chips = [['todos', 'Tudo', todos.length], ['pele', 'Pele', Produtos.lista('pele').length], ['cabelo', 'Cabelo', Produtos.lista('cabelo').length]]
     .map(([k, l, n]) => `<button class="chip" aria-pressed="${ui.colTipo === k}" data-act="colTipo" data-t="${k}">${l}<span class="n">${n}</span></button>`).join('');
   return `<div class="stack"><div class="between"><div class="chips wrap">${chips}</div><div class="row" style="gap:6px"><button class="btn sm ghost" data-act="piAbrir">Importar</button><button class="btn sm primary" data-act="colNovo">${ic('plus')} Produto</button></div></div>
+    ${atencao.length ? `<section class="card soft"><h3>Precisam de atenção</h3><div class="list" style="margin-top:8px">${atencao.map(([p, a]) => `<div class="item" style="cursor:default">
+      <button style="all:unset;cursor:pointer;flex:1;min-width:0" data-act="colAbrir" data-id="${p.id}"><h3>${esc(p.nome)}</h3><p class="sm" style="color:var(--${a.grave ? 'danger' : 'muted'})">${a.txt}</p></button>
+      <button class="btn sm sand" data-act="colRepor" data-id="${p.id}">${ic('heart')} Repor</button></div>`).join('')}</div></section>` : ''}
     ${ps.length ? `<div class="pgrid">${ps.slice().sort((a, b) => a.nome.localeCompare(b.nome)).map(p => `<button class="pcard" data-act="colAbrir" data-id="${p.id}">${pimg(p)}
-      <span><h3>${esc(p.nome)}</h3>${p.marca || p.finalidade ? `<p>${esc(p.marca || p.finalidade)}</p>` : ''}</span><span class="tag">${ic(CATS[p.cat][1] === 'pele' ? 'drop' : 'hair')} ${esc(CATS[p.cat][0])}</span></button>`).join('')}</div>`
+      <span><h3>${esc(p.nome)}</h3>${prodAlerta(p) ? `<p style="color:var(--${prodAlerta(p).grave ? 'danger' : 'warn'})">${prodAlerta(p).txt}</p>` : p.marca || p.finalidade ? `<p>${esc(p.marca || p.finalidade)}</p>` : ''}</span><span class="tag">${ic(CATS[p.cat][1] === 'pele' ? 'drop' : 'hair')} ${esc(CATS[p.cat][0])}</span></button>`).join('')}</div>`
       : `<div class="card empty">${ic('bag')}<h2>Sua coleção</h2><p class="muted sm">Cadastre os produtos que você já tem. Eles ficam disponíveis nas rotinas de pele e nos registros do cabelo.</p></div>`}</div>`;
 }
 App.prompts.colecao = `Organize meus produtos de beleza em uma lista para eu importar num app. Responda SÓ com as linhas, sem título, explicação, numeração ou bloco de código.
@@ -2805,7 +2912,9 @@ function detalhe(p) {
     <div><h2>${esc(p.nome)}</h2><p class="muted">${esc(p.marca || '')}</p></div>
     ${p.obs ? `<p class="note">${esc(p.obs)}</p>` : ''}
     <dl class="kv"><dt>Categoria</dt><dd>${esc(CATS[p.cat][0])}</dd><dt>Para</dt><dd>${TIPO[CATS[p.cat][1]]}</dd>${p.finalidade ? `<dt>Finalidade</dt><dd>${esc(p.finalidade)}</dd>` : ''}
-      <dt>Em uso</dt><dd>${usos.length ? esc(usos.join(', ')) : 'Ainda não usado'}</dd></dl>
+      <dt>Em uso</dt><dd>${usos.length ? esc(usos.join(', ')) : 'Ainda não usado'}</dd>
+      ${p.aberto ? `<dt>Aberto em</dt><dd>${fmtDataLonga(fromKey(p.aberto))}</dd>` : ''}${p.validade ? `<dt>Validade</dt><dd>${plural(+p.validade, 'mês', 'meses')} depois de aberto</dd>` : ''}</dl>
+    ${prodAlerta(p) ? `<p class="note ${prodAlerta(p).grave ? 'warn' : ''}">${prodAlerta(p).txt}. <button class="btn link sm" data-act="colRepor" data-id="${p.id}">Pôr na lista de desejos</button></p>` : ''}
     <div class="row-btns"><button class="btn sand" data-act="colEditar" data-id="${p.id}">${ic('pencil')} Editar</button><button class="btn ghost" data-act="colExcluir" data-id="${p.id}">Excluir</button></div>`;
 }
 App.module({
@@ -2829,6 +2938,12 @@ App.module({
     colNovo: () => abrirProduto({tipo: ui.colTipo === 'cabelo' ? 'cabelo' : 'pele'}),
     colAbrir: d => { const p = Produtos.get(d.id); Sheet.open({title: 'Meu produto', render: () => detalhe(p)}); },
     colEditar: d => abrirProduto(Produtos.get(d.id)),
+    colRepor: d => {
+      const p = Produtos.get(d.id), w = Store.get('desejos') || {v: 1, itens: []}, k = x => (x || '').trim().toLowerCase();
+      if (w.itens.some(x => !x.comprado && k(x.nome) === k(p.nome))) return toast('Já está na lista de desejos');
+      w.itens.push({id: uid(), nome: p.nome, marca: p.marca || '', tipo: CATS[p.cat][1], preco: null, link: '', obs: 'Repor', foto: null, comprado: false});
+      Store.put('desejos', w); toast('Adicionado à lista de desejos');
+    },
     colExcluir: d => { Sheet.close(); setTimeout(() => { abrirProduto(Produtos.get(d.id)); App.actions.fpExcluir(); }, 0); }
   }
 });
@@ -3296,6 +3411,7 @@ App.hooks.avisos.push(() => D.st().itens.filter(x => !x.feito && x.data && x.hor
 
 App.module({
   id: 'tarefas', homeFim,
+  resumo: () => { const ini = semana()[0].getTime(), n = D.st().itens.filter(x => x.feito && (x.feitoEm || 0) >= ini).length; return n ? [['Tarefas concluídas', n]] : []; },
   actions: {
     tfAdd: adicionar,
     tfSec: d => { ui.tfSec = d.s; App.render(); },

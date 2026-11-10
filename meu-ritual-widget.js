@@ -244,6 +244,20 @@ async function agendarAvisos(d) {
   }
 }
 
+/* ---------- backup automático: um arquivo por mês no iCloud Drive (pasta Scriptable) ---------- */
+async function backupMensal(tk) {
+  let fm; try { fm = FileManager.iCloud(); fm.documentsDirectory(); } catch (e) { fm = FileManager.local(); }
+  const arq = fm.joinPath(fm.documentsDirectory(), `Meu Ritual backup ${dkey().slice(0, 7)}.json`);
+  if (fm.fileExists(arq)) return;
+  const docs = {}; let pagina = '';
+  do {
+    const r = new Request(url('').slice(0, -1) + '?pageSize=300' + (pagina ? '&pageToken=' + encodeURIComponent(pagina) : '')); r.headers = {Authorization: 'Bearer ' + tk};
+    const j = await r.loadJSON(); if (j.error) return;
+    for (const d of j.documents || []) docs[d.name.split('/').pop()] = de({mapValue: {fields: d.fields || {}}});
+    pagina = j.nextPageToken || '';
+  } while (pagina);
+  if (Object.keys(docs).length) fm.writeString(arq, JSON.stringify({app: 'meu-ritual', v: 1, docs})); // mesmo formato de Ajustes → Restaurar de um arquivo
+}
 async function aviso(t, m) { const a = new Alert(); a.title = t; a.message = m; a.addAction('OK'); await a.presentAlert(); }
 async function dados(tk) {
   const mes = dkey().slice(0, 7);
@@ -269,13 +283,13 @@ if (config.runsInApp && !params.marcar) {
   if (op !== -1 && Keychain.contains(K_TOKEN)) {
     const tk = await token();
     const dd = tk ? await dados(tk) : null;
-    if (dd) try { await agendarAvisos(dd); } catch (e) {}
+    if (dd) try { await agendarAvisos(dd); } catch (e) {} try { await backupMensal(tk); } catch (e) {}
     const w = dd ? montar(dd) : montar(null, 'Entre de novo com a sua conta.');
     await w.presentLarge();
   }
 } else if (params.atualizar) {
   const tk = await token();
-  if (tk) try { await agendarAvisos(await dados(tk)); } catch (e) {}
+  if (tk) try { await agendarAvisos(await dados(tk)); } catch (e) {} try { await backupMensal(tk); } catch (e) {}
 } else if (params.marcar) {
   const tk = await token();
   const msg = tk ? await marcar(params.marcar, tk) : 'Abra o script no Scriptable para entrar com a sua conta.';
@@ -284,7 +298,7 @@ if (config.runsInApp && !params.marcar) {
   const tk = await token();
   let w;
   if (!tk) w = montar(null, 'Abra este script no Scriptable para entrar.');
-  else { try { const dd = await dados(tk); w = montar(dd); try { await agendarAvisos(dd); } catch (e) {} } catch (e) { w = montar(null, 'Sem conexão agora.'); } }
+  else { try { const dd = await dados(tk); w = montar(dd); try { await agendarAvisos(dd); } catch (e) {} try { await backupMensal(tk); } catch (e) {} } catch (e) { w = montar(null, 'Sem conexão agora.'); } }
   Script.setWidget(w);
 }
 Script.complete();
