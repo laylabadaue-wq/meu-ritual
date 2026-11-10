@@ -205,6 +205,7 @@ nav.tabs a[aria-current="page"] .ic{stroke-width:1.9}
 .segbar button{flex:1;height:6px;border:0;border-radius:9px;background:var(--sand);cursor:pointer;padding:0}
 .segbar button.done{background:var(--sage-2)}
 .segbar button.cur{background:var(--accent)}
+.segbar button.skip{background:var(--sand);opacity:.35}
 .sets{display:grid;gap:8px}
 .set{display:grid;grid-template-columns:minmax(60px,auto) 1fr auto;align-items:center;gap:8px;padding:7px 7px 7px 14px;border-radius:18px;background:var(--surface-2);transition:background .25s}
 .set.feito{background:var(--sage-soft)}
@@ -531,7 +532,7 @@ const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e)
    "cabelo", "cabelo-evo-<id>", "perfil"). Na conta: data/users/<id>/<doc> (privado).
    Espelhado no navegador: abre na hora e funciona sem conexão. */
 const CACHE = 'meu-ritual:v1';
-const APP_VERSAO = '22'; // o montar_site.py troca pelo número da versão do site
+const APP_VERSAO = '23'; // o montar_site.py troca pelo número da versão do site
 /* IndexedDB: guarda tudo no aparelho com bem mais espaço que o localStorage (fotos incluídas) */
 const IDB = {
   db: null,
@@ -933,8 +934,9 @@ const Timer = {
       return;
     }
     if (!this.on) { root.innerHTML = ''; return; }
-    root.innerHTML = `<div class="timer ${this.done ? 'done' : ''}" role="timer" aria-label="Cronômetro de descanso">${this.ringHtml(25)}
-      <div class="tinfo"><b>${this.done ? 'Descanso concluído' : this.paused ? 'Pausado' : 'Descanso'}</b><small>${this.done ? 'Bora para a próxima série' : esc(this.label)}</small></div>
+    const voltar = (Store.get('treinos') || {}).ativa ? ' data-act="go" data-r="sessao" style="cursor:pointer" title="Voltar para o treino"' : ''; // toque na barrinha abre o treino
+    root.innerHTML = `<div class="timer ${this.done ? 'done' : ''}" role="timer" aria-label="Cronômetro de descanso"><span${voltar}>${this.ringHtml(25)}</span>
+      <div class="tinfo"${voltar}><b>${this.done ? 'Descanso concluído' : this.paused ? 'Pausado' : 'Descanso'}</b><small>${this.done ? 'Bora para a próxima série' : esc(this.label)}</small></div>
       <div class="tbtns">${this.done ? `<button data-act="tmStop" aria-label="Fechar">${ic('x')}</button>`
         : `<button data-act="tmAdd" aria-label="Mais 15 segundos">+15</button>
            <button data-act="tmToggle" aria-label="${this.paused ? 'Continuar' : 'Pausar'}">${ic(this.paused ? 'play' : 'pause')}</button>
@@ -1637,14 +1639,14 @@ ui.tTab = ui.tTab || 'fichas'; ui.libView = ui.libView || 'sugestoes'; ui.calOff
 
 const T = {
   st: () => Store.get('treinos'),
-  save: s => Store.put('treinos', s),
+  save: s => { if (s && s.ativa) sincAtiva(s); Store.put('treinos', s); },
   ex: (s, id) => s.exercicios.find(e => e.id === id),
   hist: () => Store.ids('treinos-hist-').flatMap(k => Store.docs[k].sessoes || []).sort((a, b) => b.inicio - a.inicio),
   grupos: (s, t) => [...new Set(t.exercicios.map(id => (T.ex(s, id) || {}).grupo).filter(Boolean))],
   sig: t => (t.nome.match(/treino\s+(\S+)/i) || [])[1] || t.nome.split(/\s+/)[0] || '?',
   prog(a) {
     let feitas = 0, total = 0, exRest = 0;
-    a.itens.forEach(it => { const f = it.series.filter(x => x.feito).length; feitas += f; total += it.series.length; if (f < it.series.length) exRest++; });
+    a.itens.filter(it => !it.pulado).forEach(it => { const f = it.series.filter(x => x.feito).length; feitas += f; total += it.series.length; if (f < it.series.length) exRest++; });
     return {feitas, total, exRest, pct: total ? Math.round(feitas * 100 / total) : 0};
   }
 };
@@ -1764,9 +1766,13 @@ function viewFichas(s) {
       <div class="thumbs">${exs.slice(0, 5).map(exThumb).join('')}${exs.length > 5 ? `<span>+${exs.length - 5}</span>` : ''}</div>
       <div class="between"><div class="daypills">${ORDEM_SEMANA.map(d => `<span class="daypill ${t.dias.includes(d) ? 'on' : ''}">${DIA_CURTO[d]}</span>`).join('')}</div>
       <span class="tag">${plural(t.exercicios.length, 'exercício')}</span></div>
-      <button class="btn ${t.dias.includes(hoje) ? 'primary' : 'sand'} block" data-act="tIniciar" data-id="${t.id}" ${t.exercicios.length ? '' : 'disabled'}>Iniciar treino ${ic('next')}</button></article>`;
+      <button class="btn ${t.dias.includes(hoje) || emCurso(s, t) ? 'primary' : 'sand'} block" data-act="tIniciar" data-id="${t.id}" ${t.exercicios.length ? '' : 'disabled'}>${emCurso(s, t) ? 'Continuar treino' : 'Iniciar treino'} ${ic('next')}</button></article>`;
   }).join('');
-  return `${banner}${metas}<div class="section-t"><h2>Minhas fichas</h2><button class="btn sm primary" data-act="tTrNovo">${ic('plus')} Nova ficha</button></div>
+  if (ui.tOrdem) return `${banner}${metas}<section class="card"><div class="between"><h3>Ordem das fichas</h3><button class="btn sm primary" data-act="tOrdem">Concluir</button></div>
+    <p class="sm muted" style="margin-top:6px">Segure os pontinhos e arraste para mudar a ordem.</p>
+    <div class="list" style="margin-top:12px" data-sort-act="tOrdMove">${s.treinos.map(t => `<div class="item" data-sort style="cursor:default;padding:8px 10px 8px 2px"><button class="handle" aria-label="Arrastar ${esc(t.nome)}">${ic('grip')}</button>
+      <span class="grow">${esc(t.nome)}</span><span class="tag">${plural(t.exercicios.length, 'exercício')}</span></div>`).join('')}</div></section>`;
+  return `${banner}${metas}<div class="section-t"><h2>Minhas fichas</h2><div class="row">${s.treinos.length > 1 ? `<button class="btn sm sand" data-act="tOrdem">${ic('sliders')} Ordenar</button>` : ''}<button class="btn sm primary" data-act="tTrNovo">${ic('plus')} Nova ficha</button></div></div>
     ${cards || `<div class="card empty"><p class="muted sm">Nenhuma ficha ainda. Crie a primeira e escolha os dias da semana.</p></div>`}`;
 }
 
@@ -1786,7 +1792,7 @@ function viewFicha() {
         ${e.libId && LIB[e.libId] ? `${thumb(e.libId)}` : `<span class="th" style="display:grid;place-items:center">${ic(e.grupo)}</span>`}
         <span class="grow"><h3>${esc(e.nome)}</h3><p class="sm muted">${e.series} × ${e.reps} ${UN[e.unid]}${e.descanso ? ` · ${fmtRest(e.descanso)}` : ''}</p>${e.obs ? `<p class="obs">${esc(e.obs)}</p>` : ''}</span></button>`).join('')
         || `<div class="card empty"><p class="muted sm">Ficha vazia. Toque no lápis para adicionar exercícios.</p></div>`}</div>
-      <button class="btn primary block" data-act="tIniciar" data-id="${t.id}" ${n ? '' : 'disabled'}>Iniciar treino ${ic('next')}</button></div>`;
+      <button class="btn primary block" data-act="tIniciar" data-id="${t.id}" ${n ? '' : 'disabled'}>${emCurso(s, t) ? 'Continuar treino' : 'Iniciar treino'} ${ic('next')}</button></div>`;
   }
   return `<header class="top sub"><button class="icon-btn" data-act="fichaVer" aria-label="Concluir edição">${ic('back')}</button>
     <p class="eyebrow" style="margin:0">Editando ficha</p><button class="btn sm primary" data-act="fichaVer">Concluir</button></header>
@@ -1927,22 +1933,25 @@ function viewSessao() {
   if (!a) return viewTreinos();
   if (!(a.aberto >= 0 && a.aberto < a.itens.length)) a.aberto = 0;
   const i = a.aberto, it = a.itens[i], p = T.prog(a), n = a.itens.length;
-  const done = it.series.filter(x => x.feito).length;
+  const done = it.pulado ? it.series.length : it.series.filter(x => x.feito).length;
   const prox = it.series.findIndex(x => !x.feito);
   return `<header class="top sub"><button class="icon-btn" data-act="go" data-r="treinos" aria-label="Sair da tela do treino">${ic('back')}</button>
     <div style="text-align:center"><p class="eyebrow" style="margin:0">${esc(a.nome)}</p><span class="sm muted"><span id="elapsed">${fmtDur(Date.now() - a.inicio)}</span> · ${p.feitas}/${p.total} séries</span></div>
     <button class="icon-btn" data-act="sLista" aria-label="Ver todos os exercícios">${ic('book')}</button></header>
     <div class="sess-top"><div class="between"><span class="sm muted">Exercício ${i + 1} de ${n}</span><span class="sm muted">${p.exRest ? `faltam ${plural(p.exRest, 'exercício')}` : 'tudo feito'}</span></div>
-    <div class="segbar">${a.itens.map((x, j) => `<button class="${j === i ? 'cur' : x.series.every(y => y.feito) ? 'done' : ''}" data-act="sIr" data-i="${j}" aria-label="Ir para ${esc(x.nome)}"></button>`).join('')}</div></div>
+    <div class="segbar">${a.itens.map((x, j) => `<button class="${j === i ? 'cur' : x.pulado ? 'skip' : x.series.every(y => y.feito) ? 'done' : ''}" data-act="sIr" data-i="${j}" aria-label="Ir para ${esc(x.nome)}"></button>`).join('')}</div></div>
     <div class="stack">${demo(it.libId, it.grupo)}
     <div><h1 style="font-size:2.1rem">${esc(it.nome)}</h1>
       <p class="sm muted" style="margin-top:4px">${prox >= 0 ? `Série ${prox + 1} de ${it.series.length}` : 'Séries concluídas'} · ${it.reps} ${UN[it.unid]}${it.descanso ? ` · descanso ${fmtRest(it.descanso)}` : ''}</p>
       ${it.obs ? `<p class="obs">${esc(it.obs)}</p>` : ''}
       <div class="row" style="gap:16px">${it.libId && LIB[it.libId] ? `<button class="btn link sm" data-act="sComo" data-k="${it.libId}">Como fazer?</button>` : ''}
-      <button class="btn link sm" data-act="sRest" data-i="${i}">${ic('clock')} Alterar descanso</button></div></div>
-    <div class="sets">${it.series.map((se, j) => setRow(it, i, se, j)).join('')}</div>
+      <button class="btn link sm" data-act="sRest" data-i="${i}">${ic('clock')} Alterar descanso</button>
+      ${it.pulado ? '' : `<button class="btn link sm" data-act="sPular" data-i="${i}">${ic('skip')} Pular hoje</button>`}</div></div>
+    ${it.pulado ? `<div class="card soft"><p class="sm">Você pulou este exercício hoje. Ele não conta no treino nem no histórico.</p>
+      <button class="btn sand block" style="margin-top:10px" data-act="sPular" data-i="${i}">Fazer mesmo assim</button></div>`
+      : `<div class="sets">${it.series.map((se, j) => setRow(it, i, se, j)).join('')}</div>`}
     <div id="timerInline"></div>
-    ${!Timer.on && it.descanso ? `<button class="btn ghost" data-act="sDescanso" data-i="${i}">${ic('clock')} Iniciar descanso (${fmtRest(it.descanso)})</button>` : ''}
+    ${!Timer.on && it.descanso && !it.pulado ? `<button class="btn ghost" data-act="sDescanso" data-i="${i}">${ic('clock')} Iniciar descanso (${fmtRest(it.descanso)})</button>` : ''}
     </div>
     <div class="sess-nav"><button class="btn sand" data-act="sIr" data-i="${i - 1}" ${i ? '' : 'disabled'} aria-label="Exercício anterior">${ic('back')}</button>
     ${i < n - 1 ? `<button class="btn ${done === it.series.length ? 'primary' : 'sand'}" data-act="sIr" data-i="${i + 1}">Próximo exercício ${ic('next')}</button>`
@@ -1965,7 +1974,7 @@ function resumoSessao(x) {
 }
 function paraSalvar(a) {
   return {id: a.id, treinoId: a.treinoId, nome: a.nome, inicio: a.inicio, fim: Date.now(),
-    itens: a.itens.map(it => ({exId: it.exId, nome: it.nome, grupo: it.grupo, reps: it.reps, unid: it.unid, plan: it.series.length,
+    itens: a.itens.filter(it => !it.pulado).map(it => ({exId: it.exId, nome: it.nome, grupo: it.grupo, reps: it.reps, unid: it.unid, plan: it.series.length,
       feitas: it.series.map(s => s.feito ? (s.reps ?? it.reps) : null)}))};
 }
 setInterval(() => { const el = $('#elapsed'), s = T.st(); if (el && s && s.ativa) el.textContent = fmtDur(Date.now() - s.ativa.inicio); }, 20000);
@@ -2076,9 +2085,34 @@ function viewHistorico(s) {
 }
 
 /* ----- ações ----- */
+const falta = x => !x.pulado && x.series.some(y => !y.feito);
+const emCurso = (s, t) => !!(s.ativa && s.ativa.treinoId === t.id);
+const baseEx = e => ({nome: e.nome, grupo: e.grupo, reps: e.reps, unid: e.unid || 'reps', descanso: e.descanso || 0, obs: e.obs || '', libId: e.libId || '', series: e.series});
+const novoItem = e => { const b = baseEx(e); return {exId: e.id, ...b, series: Array.from({length: b.series}, () => ({feito: false, reps: null})), base: b}; };
+/* editou a ficha com o treino em andamento: o treino segue a ficha nova sem perder as séries já feitas.
+   Só muda o que mudou na ficha, então um descanso ajustado só para hoje continua valendo. */
+function sincAtiva(s) {
+  const a = s.ativa, t = s.treinos.find(x => x.id === a.treinoId);
+  if (!t) return;
+  const abertoId = (a.itens[a.aberto] || {}).exId;
+  const novos = t.exercicios.map(id => T.ex(s, id)).filter(Boolean).map(e => {
+    const it = a.itens.find(x => x.exId === e.id);
+    if (!it) return novoItem(e);
+    const b = it.base || {}, n = baseEx(e);
+    for (const k of Object.keys(n)) if (k !== 'series' && b[k] !== n[k]) it[k] = n[k];
+    if (b.series !== n.series) {
+      while (it.series.length < n.series) it.series.push({feito: false, reps: null});
+      while (it.series.length > Math.max(1, n.series) && !it.series[it.series.length - 1].feito) it.series.pop();
+    }
+    it.base = n;
+    return it;
+  });
+  a.itens = [...novos, ...a.itens.filter(x => !novos.includes(x) && x.series.some(y => y.feito))]; // tirou da ficha mas já tinha feito: fica no treino de hoje
+  a.nome = t.nome;
+  a.aberto = Math.max(0, a.itens.findIndex(x => x.exId === abertoId));
+}
 function iniciar(t, s) {
-  const itens = t.exercicios.map(id => T.ex(s, id)).filter(Boolean).map(e => ({exId: e.id, nome: e.nome, grupo: e.grupo, reps: e.reps, unid: e.unid || 'reps',
-    descanso: e.descanso || 0, obs: e.obs || '', libId: e.libId || '', series: Array.from({length: e.series}, () => ({feito: false, reps: null}))}));
+  const itens = t.exercicios.map(id => T.ex(s, id)).filter(Boolean).map(novoItem);
   s.ativa = {id: uid(), treinoId: t.id, nome: t.nome, inicio: Date.now(), aberto: 0, itens};
   T.save(s); Wake.on(); App.go('sessao');
 }
@@ -2091,6 +2125,8 @@ App.module({
     fichaEditar: d => { ui.fichaSel = d.id; ui.fichaModo = 'editar'; App.go('ficha'); window.scrollTo(0, 0); },
     fichaVer: () => { ui.fichaModo = 'ver'; App.render(); window.scrollTo(0, 0); },
     fiEdit: d => openExForm(T.ex(T.st(), d.id)),
+    tOrdem: () => { ui.tOrdem = !ui.tOrdem; App.render(); },
+    tOrdMove: ({from, to}) => { const s = T.st(); mover(s.treinos, from, to); T.save(s); },
     fiMove: ({from, to}) => { const s = T.st(), t = s.treinos.find(x => x.id === ui.fichaSel), vis = t.exercicios.filter(id => T.ex(s, id)); mover(vis, from, to); t.exercicios = vis; T.save(s); },
     fiTirar: d => { const s = T.st(), t = s.treinos.find(x => x.id === ui.fichaSel); t.exercicios = t.exercicios.filter(x => x !== d.id); T.save(s); toast('Exercício tirado da ficha'); },
     fiAddLib: () => Sheet.open({title: 'Adicionar da biblioteca', state: {q: '', g: ''}, render: fiPicker}),
@@ -2205,8 +2241,18 @@ App.module({
       const a = T.st().ativa;
       Sheet.open({title: 'Exercícios do treino', render: () => `<div class="list">${a.itens.map((it, i) => { const f = it.series.filter(x => x.feito).length;
         return `<button class="item" data-act="sIrFechar" data-i="${i}">${it.libId && LIB[it.libId] ? `${thumb(it.libId)}` : `<span class="th" style="display:grid;place-items:center">${ic(it.grupo)}</span>`}
-          <span class="grow"><h3>${esc(it.nome)}</h3><p class="sm muted">${f}/${it.series.length} séries${i === a.aberto ? ' · atual' : ''}</p></span>${f === it.series.length ? `<span style="color:var(--ok)">${ic('check')}</span>` : ''}</button>`; }).join('')}</div>
+          <span class="grow"><h3>${esc(it.nome)}</h3><p class="sm muted">${it.pulado ? 'pulado hoje' : `${f}/${it.series.length} séries`}${i === a.aberto ? ' · atual' : ''}</p></span>${f === it.series.length ? `<span style="color:var(--ok)">${ic('check')}</span>` : ''}</button>`; }).join('')}</div>
         <div class="row-btns"><button class="btn ghost" data-act="sDescartar">Descartar treino</button><button class="btn primary" data-act="sFinalizar">Finalizar treino</button></div>`});
+    },
+    sPular: d => {
+      const s = T.st(), a = s.ativa, i = +d.i, it = a.itens[i];
+      it.pulado = !it.pulado;
+      if (it.pulado) {
+        const nx = a.itens.findIndex((x, k) => k > i && falta(x)), alt = nx >= 0 ? nx : a.itens.findIndex(falta);
+        if (alt >= 0) a.aberto = alt;
+        toast(`${it.nome} pulado hoje`); window.scrollTo(0, 0);
+      }
+      T.save(s);
     },
     sIrFechar: d => { Sheet.close(); App.actions.sIr(d); },
     sComo: d => { const x = LIB[d.k]; Sheet.open({title: x.n, render: () => `${demo(x.k)}<div class="chips wrap">${x.m.map(m => `<span class="pill">${esc(m)}</span>`).join('')}</div><div class="howto"><h3>Posição inicial</h3><p class="sm">${esc(x.ini)}</p></div>
@@ -2217,10 +2263,10 @@ App.module({
       if (se.feito) se.feito = false;
       else {
         se.feito = true; if (se.reps == null) se.reps = it.reps; buzz(15);
-        const restam = a.itens.some(x => x.series.some(y => !y.feito));
+        const restam = a.itens.some(falta);
         let label;
         if (it.series.every(x => x.feito)) {
-          const nx = a.itens.findIndex((x, k) => k > i && x.series.some(y => !y.feito)), alt = nx >= 0 ? nx : a.itens.findIndex(x => x.series.some(y => !y.feito));
+          const nx = a.itens.findIndex((x, k) => k > i && falta(x)), alt = nx >= 0 ? nx : a.itens.findIndex(falta);
           if (alt >= 0) { a.aberto = alt; label = `Próximo: ${a.itens[alt].nome}`; window.scrollTo(0, 0); }
         } else label = `${it.nome} · série ${it.series.findIndex(x => !x.feito) + 1}`;
         if (restam && it.descanso > 0) Timer.start(it.descanso, label);
