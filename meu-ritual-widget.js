@@ -3,7 +3,6 @@
 
 const API_KEY = 'AIzaSyC4PCD13mZv0hJtXkuYLHsjAPOPioRhf0Q';
 const PROJETO = 'meu-ritual-fb0f0';
-const SITE = 'https://laylabadaue-wq.github.io/meu-ritual/';
 const K_TOKEN = 'meuRitual.refreshToken', K_UID = 'meuRitual.uid';
 
 // sempre claro, nas cores do app
@@ -161,7 +160,8 @@ const quandoTarefa = x => {
 function montar(d, msg) {
   const fam = config.widgetFamily || 'large', grande = fam === 'large', pequeno = fam === 'small';
   const w = new ListWidget();
-  w.backgroundColor = COR.fundo; w.setPadding(14, 14, 14, 14); w.url = SITE;
+  w.backgroundColor = COR.fundo; w.setPadding(14, 14, 14, 14);
+  w.url = `scriptable:///run/${encodeURIComponent(Script.name())}?atualizar=1`; // toque fora das tarefas: só atualiza, não abre o navegador
   w.refreshAfterDate = new Date(Date.now() + 60 * 1000); // pede atualização rápida (o iPhone decide quando)
   const hoje = new Date();
   const topo = w.addStack(); topo.centerAlignContent();
@@ -273,6 +273,9 @@ if (config.runsInApp && !params.marcar) {
     const w = dd ? montar(dd) : montar(null, 'Entre de novo com a sua conta.');
     await w.presentLarge();
   }
+} else if (params.atualizar) {
+  const tk = await token();
+  if (tk) try { await agendarAvisos(await dados(tk)); } catch (e) {}
 } else if (params.marcar) {
   const tk = await token();
   const msg = tk ? await marcar(params.marcar, tk) : 'Abra o script no Scriptable para entrar com a sua conta.';
