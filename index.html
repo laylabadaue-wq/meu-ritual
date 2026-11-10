@@ -532,7 +532,7 @@ const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e)
    "cabelo", "cabelo-evo-<id>", "perfil"). Na conta: data/users/<id>/<doc> (privado).
    Espelhado no navegador: abre na hora e funciona sem conexão. */
 const CACHE = 'meu-ritual:v1';
-const APP_VERSAO = '23'; // o montar_site.py troca pelo número da versão do site
+const APP_VERSAO = '24'; // o montar_site.py troca pelo número da versão do site
 /* IndexedDB: guarda tudo no aparelho com bem mais espaço que o localStorage (fotos incluídas) */
 const IDB = {
   db: null,
@@ -1399,6 +1399,7 @@ L('Single_Leg_Glute_Bridge','Ponte unilateral','gluteos',['Glúteos','Posterior 
 L('Glute_Kickback','Coice de glúteo no solo','gluteos',['Glúteos'],1,'Peso do corpo (colchonete)',3,15,'reps',45,'Fique em quatro apoios: mãos sob os ombros, joelhos sob o quadril e costas retas.',['Mantenha o joelho dobrado.','Eleve uma perna para trás e para cima até a coxa ficar alinhada ao tronco.','Aperte o glúteo no alto.','Volte sem encostar o joelho no chão.'],'Só o quadril estende; a lombar e o tronco ficam parados.',['Arquear a lombar ao subir a perna','Girar o quadril para o lado','Fazer rápido, com balanço']);
 L('One-Legged_Cable_Kickback','Coice no cabo','gluteos',['Glúteos'],2,'Polia baixa e tornozeleira',3,12,'reps',45,'De frente para a polia baixa, tornozeleira presa em um tornozelo, mãos apoiadas na máquina e tronco levemente inclinado.',['Firme o abdômen.','Leve a perna para trás com o joelho quase estendido.','Contraia o glúteo no fim do movimento.','Volte devagar, sem deixar o peso bater.'],'Movimento curto e controlado, sem jogar o tronco à frente.',['Arquear as costas para subir mais','Girar o quadril','Usar impulso']);
 L('Thigh_Abductor','Cadeira abdutora','gluteos',['Glúteo médio','Abdutores'],1,'Máquina abdutora',3,15,'reps',45,'Sente-se na máquina com as costas apoiadas e as almofadas na parte externa dos joelhos.',['Segure as alças.','Afaste as pernas o máximo que conseguir.','Segure 1 segundo aberta.','Volte devagar sem deixar os pesos baterem.'],'Movimento controlado nos dois sentidos, sem tirar o quadril do banco.',['Fechar as pernas rápido','Usar carga que impede abrir totalmente','Tirar o quadril do banco']);
+L('Bulgarian_Split_Squat','Agachamento búlgaro','gluteos',['Glúteos','Quadríceps','Equilíbrio'],3,'Halteres e banco',3,10,'reps',90,'De costas para um banco, apoie o peito do pé de trás sobre ele. O pé da frente fica cerca de dois passos à frente, com um halter em cada mão.',['Desça dobrando o joelho da frente, levando o joelho de trás em direção ao chão.','Desça até a coxa da frente ficar quase paralela ao chão.','Empurre o chão com o pé da frente para subir.','Complete as repetições e troque de perna.'],'O peso fica na perna da frente: a de trás só equilibra. Inclinar o tronco um pouco à frente puxa mais o glúteo.',['Pé da frente muito perto do banco','Joelho da frente caindo para dentro','Empurrar com a perna de trás']);
 L('Split_Squat_with_Dumbbells','Agachamento afundo com halteres','gluteos',['Glúteos','Quadríceps'],2,'Halteres',3,10,'reps',75,'Base afastada, com uma perna à frente e outra atrás, um halter em cada mão e tronco reto.',['Sem mudar os pés de lugar, desça o joelho de trás em direção ao chão.','Desça até os dois joelhos formarem 90°.','Empurre com o pé da frente para subir.','Complete as repetições e troque de perna.'],'Tronco levemente inclinado à frente aumenta o trabalho do glúteo.',['Base estreita, desequilibrando','Joelho da frente para dentro','Bater o joelho de trás no chão']);
 L('Plie_Dumbbell_Squat','Agachamento sumô com halter','gluteos',['Glúteos','Adutores','Quadríceps'],1,'Halter',3,12,'reps',60,'Pés bem afastados e pontas para fora, segurando um halter com as duas mãos entre as pernas.',['Mantenha o tronco ereto.','Desça dobrando os joelhos na direção das pontas dos pés.','Desça até as coxas ficarem paralelas ao chão.','Suba contraindo glúteos e parte interna da coxa.'],'Joelhos abertos na mesma direção dos pés durante todo o movimento.',['Joelhos fechando','Inclinar o tronco à frente','Calcanhares saindo do chão']);
 L('Romanian_Deadlift','Levantamento terra romeno','gluteos',['Glúteos','Posterior de coxa','Lombar'],2,'Barra',3,10,'reps',90,'Em pé, barra à frente das coxas com as mãos na largura dos ombros e joelhos levemente dobrados.',['Empurre o quadril para trás.','Deslize a barra rente às coxas até abaixo dos joelhos.','Mantenha as costas retas e o peito aberto.','Suba contraindo os glúteos.'],'A barra fica sempre colada às pernas e o quadril faz o movimento.',['Arredondar a coluna','Deixar a barra se afastar do corpo','Hiperestender a lombar no alto']);
@@ -1517,6 +1518,7 @@ const box = (x, y, w) => `<rect class="fpr" opacity=".45" x="${x}" y="${y}" widt
 const esteira = ILU.Walking_Treadmill.fundo;
 const polia = (x, y) => fx.post(x) + `<circle class="fpr" cx="${x + 3.5}" cy="${y}" r="3"/>`;
 /* superiores e braços */
+C('Bulgarian_Split_Squat', 'Split_Squat_with_Dumbbells');
 C('Hammer_Curls', 'Dumbbell_Bicep_Curl');
 C('Barbell_Curl', 'Dumbbell_Bicep_Curl', {mao: 'plate', maoF: false});
 I('Concentration_Curls', pose([70, 78], 40, [60, 90], [0, 0], [90, 0], [90, 0]), pose([70, 78], 40, [60, 90], [0, 168], [90, 0], [90, 0]), {mao: 'db', maoF: false, fundo: () => fx.seat(50, 80, 36)});
@@ -2111,6 +2113,18 @@ function sincAtiva(s) {
   a.nome = t.nome;
   a.aberto = Math.max(0, a.itens.findIndex(x => x.exId === abertoId));
 }
+/* exercício criado à mão com nome de um da biblioteca (ex.: "Búlgaro", "Stiff") ganha explicação e ilustração */
+App.hooks.migrar.push(() => {
+  const s = T.st(); if (!s) return;
+  const lib = Object.values(LIB); let mudou = false;
+  for (const e of s.exercicios) {
+    if (e.libId && LIB[e.libId]) continue;
+    const n = semAcento(e.nome || '').trim(); if (n.length < 4) continue;
+    const x = lib.find(l => semAcento(l.n) === n) || lib.find(l => semAcento(l.n).startsWith(n)) || lib.find(l => semAcento(l.n).includes(n));
+    if (x) { e.libId = x.k; mudou = true; }
+  }
+  if (mudou) T.save(s);
+});
 function iniciar(t, s) {
   const itens = t.exercicios.map(id => T.ex(s, id)).filter(Boolean).map(novoItem);
   s.ativa = {id: uid(), treinoId: t.id, nome: t.nome, inicio: Date.now(), aberto: 0, itens};

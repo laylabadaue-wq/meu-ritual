@@ -135,87 +135,121 @@ async function marcar(id, tk) {
   return r.error ? 'Não deu para salvar agora. Tente de novo com internet.' : `Feito: ${x.titulo}`;
 }
 
-/* ---------- desenho ---------- */
-let ESC = 1; // tamanho das letras: maior no widget grande
+/* ---------- desenho: poucos blocos, bem separados ---------- */
 function txt(st, texto, cor, tam, peso) {
-  tam = Math.round(tam * ESC);
-  const t = st.addText(texto); t.textColor = cor; t.font = peso === 2 ? Font.boldSystemFont(tam) : peso ? Font.semiboldSystemFont(tam) : Font.systemFont(tam); t.lineLimit = 1; return t;
+  const t = st.addText(texto); t.textColor = cor; t.lineLimit = 1; t.minimumScaleFactor = 0.8;
+  t.font = peso === 'serif' ? new Font('Georgia-Bold', tam) : peso === 2 ? Font.boldSystemFont(tam) : peso ? Font.semiboldSystemFont(tam) : Font.systemFont(tam);
+  return t;
 }
-function bloco(pai, fundo) { const b = pai.addStack(); b.layoutVertically(); b.backgroundColor = fundo; b.cornerRadius = 12; b.setPadding(Math.round(7 * ESC), Math.round(9 * ESC), Math.round(7 * ESC), Math.round(9 * ESC)); return b; }
+function icone(st, nome, cor, tam) {
+  const s = SFSymbol.named(nome); if (!s) return;
+  const i = st.addImage(s.image); i.tintColor = cor; i.imageSize = new Size(tam, tam);
+}
+function cartao(pai, fundo, pad) { const b = pai.addStack(); b.layoutVertically(); b.backgroundColor = fundo; b.cornerRadius = 14; b.setPadding(pad, pad + 2, pad, pad + 2); return b; }
+function titulo(pai, ic, texto, cor, extra) {
+  const l = pai.addStack(); l.centerAlignContent(); l.spacing = 5;
+  icone(l, ic, cor, 11); txt(l, texto, COR.suave, 10, 1);
+  if (extra) { l.addSpacer(); txt(l, extra, COR.suave, 10); }
+  return l;
+}
+const quandoTarefa = x => {
+  if (!x.data) return '';
+  const hoje = dkey(), amanha = dkey(new Date(Date.now() + 864e5));
+  const dia = x.data < hoje ? 'atrasada' : x.data === hoje ? '' : x.data === amanha ? 'amanhã' : (() => { const d = fromKey(x.data); return `${d.getDate()}/${d.getMonth() + 1}`; })();
+  return [dia, x.hora].filter(Boolean).join(' · ');
+};
 function montar(d, msg) {
   const fam = config.widgetFamily || 'large', grande = fam === 'large', pequeno = fam === 'small';
-  ESC = grande ? 1.25 : 1;
   const w = new ListWidget();
-  w.backgroundColor = COR.fundo; w.setPadding(13, 14, 12, 14); w.url = SITE;
+  w.backgroundColor = COR.fundo; w.setPadding(14, 14, 14, 14); w.url = SITE;
   w.refreshAfterDate = new Date(Date.now() + 60 * 1000); // pede atualização rápida (o iPhone decide quando)
   const hoje = new Date();
   const topo = w.addStack(); topo.centerAlignContent();
-  txt(topo, 'Meu Ritual', COR.salvia, 13, 2); topo.addSpacer();
-  txt(topo, `${DIAS[hoje.getDay()]}, ${hoje.getDate()} de ${MESES[hoje.getMonth()]}`, COR.suave, 11);
-  w.addSpacer(7);
-  if (msg) { txt(w, msg, COR.alerta, 12); return w; }
+  txt(topo, 'Meu Ritual', COR.salvia, grande ? 17 : 15, 'serif'); topo.addSpacer();
+  txt(topo, pequeno ? `${DIAS[hoje.getDay()]} ${hoje.getDate()}` : `${DIAS[hoje.getDay()]}, ${hoje.getDate()} de ${MESES[hoje.getMonth()]}`, COR.suave, 11);
+  w.addSpacer(grande ? 10 : 8);
+  if (msg) { txt(w, msg, COR.alerta, 12); w.addSpacer(); return w; }
 
-  // treino e skincare lado a lado
-  if (!pequeno && (d.treino || d.pele)) {
-    const linha = w.addStack(); linha.spacing = 6;
-    if (d.treino) {
-      const b = bloco(linha, d.treino.ok ? COR.salviaClara : COR.cartao);
-      txt(b, 'TREINO', COR.suave, 8, 1);
-      txt(b, d.treino.nome, COR.texto, 11, 1);
-      txt(b, d.treino.ok ? '✓ feito' : d.treino.status, d.treino.ok ? COR.ok : COR.suave, 10);
-    }
-    if (d.pele) {
-      const b = bloco(linha, COR.cartao);
-      txt(b, 'SKINCARE', COR.suave, 8, 1);
-      const p = (n, x) => x.t ? `${n} ${x.f}/${x.t}${x.f >= x.t ? ' ✓' : ''}` : `${n} —`;
-      txt(b, p('Manhã', d.pele.manha), d.pele.manha.t && d.pele.manha.f >= d.pele.manha.t ? COR.ok : COR.texto, 11, 1);
-      txt(b, p('Noite', d.pele.noite), d.pele.noite.t && d.pele.noite.f >= d.pele.noite.t ? COR.ok : COR.texto, 11, 1);
-    }
-    w.addSpacer(8);
+  // 1) hoje: treino e skincare, um cartão cada
+  if (!pequeno) {
+    const linha = w.addStack(); linha.spacing = 8;
+    const tr = d.treino || {nome: 'Descanso', status: 'sem treino hoje'};
+    const c1 = cartao(linha, tr.ok ? COR.salviaClara : COR.cartao, grande ? 9 : 7);
+    titulo(c1, 'figure.strengthtraining.traditional', 'TREINO', COR.salvia); c1.addSpacer(3);
+    txt(c1, tr.nome, COR.texto, grande ? 14 : 12, 1);
+    txt(c1, tr.ok ? '✓ feito' : tr.status, tr.ok ? COR.ok : COR.suave, 11);
+    const pele = d.pele || {manha: {f: 0, t: 0}, noite: {f: 0, t: 0}};
+    const okM = pele.manha.t && pele.manha.f >= pele.manha.t, okN = pele.noite.t && pele.noite.f >= pele.noite.t;
+    const c2 = cartao(linha, okM && okN ? COR.salviaClara : COR.cartao, grande ? 9 : 7);
+    titulo(c2, 'sparkles', 'SKINCARE', COR.salvia); c2.addSpacer(3);
+    const per = (n, x, ok) => txt(c2, x.t ? `${n} ${ok ? '✓' : `${x.f}/${x.t}`}` : `${n} —`, ok ? COR.ok : COR.texto, grande ? 13 : 12, 1);
+    per('Manhã', pele.manha, okM); per('Noite', pele.noite, okN);
+    w.addSpacer(grande ? 10 : 8);
+  } else if (d.treino) {
+    txt(w, d.treino.nome, COR.texto, 12, 1); txt(w, d.treino.ok ? '✓ feito' : d.treino.status, COR.suave, 10); w.addSpacer(6);
   }
 
-  // tarefas
-  const cab = w.addStack(); cab.centerAlignContent();
-  txt(cab, d.tarefas.deHoje.length ? 'TAREFAS DE HOJE' : 'PRÓXIMAS TAREFAS', COR.suave, 9, 1); cab.addSpacer();
-  if (d.tarefas.deHoje.length) txt(cab, `${d.tarefas.deHoje.length} pendente${d.tarefas.deHoje.length > 1 ? 's' : ''}`, COR.suave, 9);
-  w.addSpacer(4);
-  const max = pequeno ? 3 : grande ? 5 : 2;
+  // 2) tarefas, num cartão só
   const lista = d.tarefas.deHoje.length ? d.tarefas.deHoje : d.tarefas.proximas;
-  if (!lista.length) txt(w, 'Nenhuma tarefa pendente ✓', COR.ok, 12);
-  for (const x of lista.slice(0, max)) {
-    const s = w.addStack(); s.centerAlignContent(); s.spacing = 7;
+  const max = pequeno ? 2 : grande ? 4 : 2;
+  const ct = cartao(w, COR.cartao, grande ? 10 : 8);
+  titulo(ct, 'checklist', d.tarefas.deHoje.length ? 'TAREFAS DE HOJE' : 'PRÓXIMAS TAREFAS', COR.salvia, lista.length > max ? `+${lista.length - max} no app` : '');
+  ct.addSpacer(grande ? 6 : 4);
+  if (!lista.length) txt(ct, 'Nada pendente ✓', COR.ok, 12);
+  lista.slice(0, max).forEach((x, k) => {
+    if (k) ct.addSpacer(grande ? 7 : 4);
+    const s = ct.addStack(); s.centerAlignContent(); s.spacing = 8;
     if (!pequeno) s.url = `scriptable:///run/${encodeURIComponent(Script.name())}?marcar=${x.id}`;
     const late = x.data && x.data < dkey();
-    txt(s, '○', late ? COR.alerta : COR.salvia, 14);
-    txt(s, x.titulo, COR.texto, 12);
+    icone(s, 'circle', late ? COR.alerta : COR.salvia, grande ? 15 : 13);
+    txt(s, x.titulo, COR.texto, grande ? 14 : 12);
     s.addSpacer();
-    const info = [x.data && x.data !== dkey() ? dataCurta(x.data) : '', x.hora || ''].filter(Boolean).join(' · ');
-    if (info) txt(s, info, late ? COR.alerta : COR.suave, 10);
-    w.addSpacer(grande ? 6 : 3);
-  }
-  if (lista.length > max) txt(w, `+ ${lista.length - max} no app`, COR.suave, 10);
+    const q = quandoTarefa(x); if (q && !pequeno) txt(s, q, late ? COR.alerta : COR.suave, 11);
+  });
 
-  // contas
-  if (!pequeno && d.contas.length) {
+  // 3) contas: só a próxima, numa linha
+  if (grande && d.contas.length) {
     w.addSpacer();
-    const n = grande ? 3 : 1;
-    if (grande) { txt(w, 'PRÓXIMAS CONTAS', COR.suave, 9, 1); w.addSpacer(3); }
-    for (const c of d.contas.slice(0, n)) {
-      const s = w.addStack(); s.centerAlignContent();
-      txt(s, grande ? c.nome : `Próxima conta: ${c.nome}`, COR.texto, 11, 1); s.addSpacer();
-      const q = quando(c.venc);
-      txt(s, `${brl(c.valor)} · ${q}`, q.startsWith('vencida') || q === 'vence hoje' ? COR.alerta : COR.suave, 11);
-      w.addSpacer(2);
-    }
+    const c = d.contas[0], q = quando(c.venc), urg = q.startsWith('vencida') || q === 'vence hoje';
+    const l = w.addStack(); l.centerAlignContent(); l.spacing = 6;
+    icone(l, 'creditcard', urg ? COR.alerta : COR.salvia, 13);
+    txt(l, c.nome, COR.texto, 13, 1); txt(l, q, urg ? COR.alerta : COR.suave, 12);
+    l.addSpacer(); txt(l, brl(c.valor), COR.texto, 13, 1);
+    if (d.contas.length > 1) { w.addSpacer(2); const r = w.addStack(); r.addSpacer(19); txt(r, `e mais ${d.contas.length - 1} até ${dataCurta(d.contas[Math.min(d.contas.length, 3) - 1].venc)}`, COR.suave, 11); }
   } else w.addSpacer();
   return w;
 }
+
+/* ---------- avisos no iPhone (agendados pelo Scriptable a cada atualização do widget) ---------- */
+async function agendarAvisos(d) {
+  const agora = Date.now(), limite = agora + 7 * 864e5, quer = {};
+  for (const x of d.tarefasDoc && d.tarefasDoc.itens || []) {
+    if (x.feito || !x.data || !x.hora) continue;
+    const [h, m] = x.hora.split(':').map(Number), q = fromKey(x.data); q.setHours(h, m || 0, 0, 0);
+    if (q > agora && q < limite) quer[`mr-t-${x.id}-${x.data}-${x.hora}`] = {quando: q, corpo: x.titulo + (x.nota ? ' — ' + x.nota : '')};
+  }
+  for (const c of d.contas) {
+    const q = fromKey(c.venc); q.setHours(9, 0, 0, 0);
+    if (q > agora && q < limite) quer[`mr-c-${c.nome}-${c.venc}`] = {quando: q, corpo: `Conta vence hoje: ${c.nome}${c.valor ? ' · ' + brl(c.valor) : ''}`};
+  }
+  const nossos = (await Notification.allPending()).filter(n => n.threadIdentifier === 'meu-ritual');
+  const sobra = nossos.filter(n => !quer[n.identifier]).map(n => n.identifier);
+  if (sobra.length) await Notification.removePending(sobra);
+  const ja = new Set(nossos.map(n => n.identifier));
+  for (const [id, a] of Object.entries(quer)) {
+    if (ja.has(id)) continue;
+    const n = new Notification(); n.identifier = id; n.threadIdentifier = 'meu-ritual';
+    n.title = 'Meu Ritual'; n.body = a.corpo; n.sound = 'default'; n.setTriggerDate(a.quando);
+    await n.schedule();
+  }
+}
+
 async function aviso(t, m) { const a = new Alert(); a.title = t; a.message = m; a.addAction('OK'); await a.presentAlert(); }
 async function dados(tk) {
   const mes = dkey().slice(0, 7);
   const [tar, fin, tre, pel, hist] = await Promise.all(['tarefas', 'financas', 'treinos', 'skincare', 'treinos-hist-' + mes].map(id => ler(id, tk).catch(() => null)));
   return {
-    tarefas: tarefas(tar),
+    tarefas: tarefas(tar), tarefasDoc: tar,
     contas: (fin && fin.contas || []).filter(c => !c.pago).sort((a, b) => a.venc.localeCompare(b.venc)),
     treino: treinoDeHoje(tre, hist),
     pele: skincareDeHoje(pel)
@@ -234,7 +268,9 @@ if (config.runsInApp && !params.marcar) {
   if (op === 1 || (op === 0 && !Keychain.contains(K_TOKEN))) await entrar();
   if (op !== -1 && Keychain.contains(K_TOKEN)) {
     const tk = await token();
-    const w = tk ? montar(await dados(tk)) : montar(null, 'Entre de novo com a sua conta.');
+    const dd = tk ? await dados(tk) : null;
+    if (dd) try { await agendarAvisos(dd); } catch (e) {}
+    const w = dd ? montar(dd) : montar(null, 'Entre de novo com a sua conta.');
     await w.presentLarge();
   }
 } else if (params.marcar) {
@@ -245,7 +281,7 @@ if (config.runsInApp && !params.marcar) {
   const tk = await token();
   let w;
   if (!tk) w = montar(null, 'Abra este script no Scriptable para entrar.');
-  else { try { w = montar(await dados(tk)); } catch (e) { w = montar(null, 'Sem conexão agora.'); } }
+  else { try { const dd = await dados(tk); w = montar(dd); try { await agendarAvisos(dd); } catch (e) {} } catch (e) { w = montar(null, 'Sem conexão agora.'); } }
   Script.setWidget(w);
 }
 Script.complete();
