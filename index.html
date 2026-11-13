@@ -535,7 +535,7 @@ const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e)
    "cabelo", "cabelo-evo-<id>", "perfil"). Na conta: data/users/<id>/<doc> (privado).
    Espelhado no navegador: abre na hora e funciona sem conexão. */
 const CACHE = 'meu-ritual:v1';
-const APP_VERSAO = '27'; // o montar_site.py troca pelo número da versão do site
+const APP_VERSAO = '28'; // o montar_site.py troca pelo número da versão do site
 /* IndexedDB: guarda tudo no aparelho com bem mais espaço que o localStorage (fotos incluídas) */
 const IDB = {
   db: null,
@@ -1860,7 +1860,8 @@ function viewFicha() {
       <button class="icon-btn sm" data-act="fiTirar" data-id="${e.id}" aria-label="Tirar ${esc(e.nome)} da ficha">${ic('x')}</button></div>`).join('')
       || `<div class="card empty"><p class="muted sm">Ficha vazia. Adicione exercícios abaixo.</p></div>`}</div>
     <div class="row-btns"><button class="btn sand" data-act="fiAddLib">${ic('book')} Da biblioteca</button><button class="btn sand" data-act="fiAddManual">${ic('plus')} Exercício manual</button></div>
-    <button class="btn primary block" data-act="fichaVer">${ic('check')} Concluir edição</button></div>`;
+    <button class="btn primary block" data-act="fichaVer">${ic('check')} Concluir edição</button>
+    <button class="btn link sm" style="color:var(--danger);justify-self:center" data-act="fichaExcluir">${ic('trash')} Excluir esta ficha</button></div>`;
 }
 function fiPicker(st) {
   const q = semAcento((st.q || '').trim()), s = T.st(), t = s.treinos.find(x => x.id === ui.fichaSel);
@@ -2302,6 +2303,11 @@ App.module({
       const i = s.treinos.findIndex(x => x.id === t.id);
       if (i >= 0) s.treinos[i] = t; else s.treinos.push(t);
       T.save(s); Sheet.close(); toast(i >= 0 ? 'Ficha atualizada' : 'Ficha criada');
+    },
+    fichaExcluir: () => {
+      const id = ui.fichaSel, t = T.st().treinos.find(x => x.id === id); if (!t) return;
+      Sheet.confirm({title: 'Excluir ficha?', text: `"${t.nome}" será excluída. Os exercícios continuam na biblioteca e o histórico de treinos é mantido.`, ok: 'Excluir', danger: true,
+        onOk: () => { const s = T.st(); s.treinos = s.treinos.filter(x => x.id !== id); T.save(s); ui.tTab = 'fichas'; App.go('treinos'); toast('Ficha excluída'); }});
     },
     fTrExcluir: () => {
       const id = Sheet.st.id, s = T.st(), t = s.treinos.find(x => x.id === id);
